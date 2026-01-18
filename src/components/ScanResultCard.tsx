@@ -17,8 +17,10 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Loader2
+  Loader2,
+  Download
 } from 'lucide-react';
+import { generatePdfReport } from '@/lib/generatePdfReport';
 import { formatDistanceToNow } from 'date-fns';
 import type { Scan } from '@/types/database';
 
@@ -114,6 +116,17 @@ export default function ScanResultCard({ scan }: ScanResultCardProps) {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
+            {scan.status === 'completed' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => generatePdfReport(scan)}
+                title="Download PDF Report"
+              >
+                <Download className="w-4 h-4" />
+              </Button>
+            )}
             {scan.status === 'completed' && getRiskBadge()}
             {scan.status === 'scanning' && (
               <Badge variant="secondary" className="gap-1">
