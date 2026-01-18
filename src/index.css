@@ -190,7 +190,7 @@
   }
 
   .status-dot.active {
-    @apply bg-success;
+    background-color: hsl(var(--success));
     box-shadow: 0 0 8px hsl(142 76% 45% / 0.6);
   }
 
@@ -199,7 +199,7 @@
   }
 
   .status-dot.error {
-    @apply bg-critical;
+    background-color: hsl(var(--critical));
   }
 }
 
