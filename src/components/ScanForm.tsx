@@ -1,3 +1,13 @@
+/**
+ * Scan Form Component
+ * 
+ * SECURITY CONTROLS:
+ * - URL validation with SSRF protection (blocks internal IPs)
+ * - Client-side rate limiting (reduces server load)
+ * - Legal disclaimer requirement (compliance)
+ * - Input sanitization before API call
+ */
+
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,23 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Globe, Loader2, AlertTriangle, X, Shield } from 'lucide-react';
-import { z } from 'zod';
+import { urlSchema, checkClientRateLimit, getSafeErrorMessage } from '@/lib/security';
 import { useToast } from '@/hooks/use-toast';
-
-const urlSchema = z.object({
-  url: z.string()
-    .trim()
-    .min(1, { message: "URL is required" })
-    .max(2000, { message: "URL is too long" })
-    .refine((url) => {
-      try {
-        const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
-        return parsed.protocol === 'https:' || parsed.protocol === 'http:';
-      } catch {
-        return false;
-      }
-    }, { message: "Please enter a valid URL" }),
-});
 
 interface ScanFormProps {
   onCancel: () => void;
@@ -43,23 +38,30 @@ export default function ScanForm({ onCancel, onComplete, canScan }: ScanFormProp
     e.preventDefault();
     setError('');
 
+    // Check if user can scan (quota)
     if (!canScan) {
       setError('You have reached your daily scan limit. Upgrade to Pro for unlimited scans.');
       return;
     }
 
+    // Require legal agreement
     if (!agreedToTerms) {
       setError('You must agree to the legal disclaimer to proceed.');
       return;
     }
 
-    try {
-      urlSchema.parse({ url });
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        setError(err.errors[0].message);
-        return;
-      }
+    // SECURITY: Client-side rate limiting
+    // Reduces server load by blocking obvious abuse
+    if (!checkClientRateLimit('scan', 5, 60000)) { // 5 scans per minute
+      setError('Please wait before scanning again.');
+      return;
+    }
+
+    // SECURITY: Validate URL with SSRF protection
+    const validationResult = urlSchema.safeParse(url);
+    if (!validationResult.success) {
+      setError(validationResult.error.errors[0].message);
+      return;
     }
 
     if (!user) {
@@ -67,7 +69,7 @@ export default function ScanForm({ onCancel, onComplete, canScan }: ScanFormProp
       return;
     }
 
-    // Normalize URL
+    // Normalize URL (add https:// if missing)
     const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
 
     setIsScanning(true);
@@ -94,7 +96,7 @@ export default function ScanForm({ onCancel, onComplete, canScan }: ScanFormProp
       onComplete();
     } catch (err) {
       console.error('Scan error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to complete scan. Please try again.');
+      setError(getSafeErrorMessage(err));
     } finally {
       setIsScanning(false);
     }
