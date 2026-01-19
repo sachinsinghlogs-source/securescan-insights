@@ -1,1 +1,11 @@
 project_id = "iyzbshvrqgdqgxdbopbr"
+
+# ============================================
+# EDGE FUNCTION SECURITY CONFIGURATION
+# ============================================
+
+# Security Scan Function
+# verify_jwt = false allows us to validate JWT in code with getClaims()
+# This is required for the signing-keys system
+[functions.security-scan]
+verify_jwt = false

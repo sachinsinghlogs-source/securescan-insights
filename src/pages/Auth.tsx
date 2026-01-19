@@ -1,3 +1,14 @@
+/**
+ * Authentication Page
+ * 
+ * SECURITY CONTROLS:
+ * - Input validation via Zod schemas (prevents injection)
+ * - Password minimum 8 characters (NIST SP 800-63B)
+ * - Email normalization (lowercase, trimmed)
+ * - Secure error messages (no internal details)
+ * - CSRF protection via Supabase JWT tokens
+ */
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
@@ -7,12 +18,19 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, Lock, Mail, User, AlertCircle } from 'lucide-react';
+import { emailSchema, passwordSchema } from '@/lib/security';
 import { z } from 'zod';
 
+/**
+ * Authentication schema with security-focused validation
+ * - Email: RFC 5322 compliant, normalized
+ * - Password: Minimum 8 characters (NIST recommendation)
+ * - Full name: Optional, max 100 chars, trimmed
+ */
 const authSchema = z.object({
-  email: z.string().trim().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  fullName: z.string().trim().optional(),
+  email: emailSchema,
+  password: passwordSchema,
+  fullName: z.string().trim().max(100, "Name is too long").optional(),
 });
 
 export default function Auth() {
