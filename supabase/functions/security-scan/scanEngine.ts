@@ -8,6 +8,8 @@
  * - Legal disclaimer included in all responses
  */
 
+import { buildFixes, type FixSnippet } from "./fixSnippets.ts";
+
 // ============================================
 // SECURITY HEADERS TO CHECK ON TARGET
 // These headers are checked passively via HTTP response
@@ -62,6 +64,7 @@ export interface ScanResult {
   server_info: string | null;
   risk_score: number;
   risk_level: "low" | "medium" | "high" | "critical";
+  recommended_fixes: FixSnippet[];
   scan_type: "PASSIVE";
   legal_notice: string;
 }
@@ -282,6 +285,14 @@ export async function runSecurityScan(url: string): Promise<ScanResult> {
     (headersResult.present.length / SECURITY_HEADERS.length) * 100
   );
   
+  // Build recommended fixes based on findings
+  const recommendedFixes = buildFixes(
+    validMissingHeaders.length > 0 ? validMissingHeaders : [],
+    sslResult.valid,
+    sslResult.daysLeft,
+    techResult.cms
+  );
+
   return {
     ssl_valid: sslResult.valid,
     ssl_expiry_date: null, // Would need external API
@@ -295,6 +306,7 @@ export async function runSecurityScan(url: string): Promise<ScanResult> {
     server_info: headersResult.serverInfo,
     risk_score: risk.score,
     risk_level: risk.level,
+    recommended_fixes: recommendedFixes,
     scan_type: "PASSIVE",
     legal_notice: "Only passive, user-authorized security checks performed. No exploitation or intrusive testing.",
   };

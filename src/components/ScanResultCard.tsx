@@ -18,10 +18,12 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  Download
+  Download,
+  Wrench
 } from 'lucide-react';
 import { generatePdfReport } from '@/lib/generatePdfReport';
 import { formatDistanceToNow } from 'date-fns';
+import FixSnippetCard, { type FixSnippet } from '@/components/FixSnippetCard';
 import type { Scan } from '@/types/database';
 
 interface ScanResultCardProps {
@@ -294,6 +296,11 @@ export default function ScanResultCard({ scan }: ScanResultCardProps) {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Recommended Fixes */}
+              {scan.raw_results && typeof scan.raw_results === 'object' && 'recommended_fixes' in scan.raw_results && (
+                <FixSnippetCard fixes={(scan.raw_results as { recommended_fixes: FixSnippet[] }).recommended_fixes} />
               )}
             </div>
           )}
