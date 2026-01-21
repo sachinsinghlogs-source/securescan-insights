@@ -1,5 +1,5 @@
 /**
- * SecureScan Edge Function - Security-Hardened Implementation
+ * SecureScan Edge Function - Security-Hardened API Entry Point
  * 
  * SECURITY ARCHITECTURE:
  * ----------------------
@@ -22,311 +22,14 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-// ============================================
-// SECURITY HEADERS
-// These headers protect against common web attacks
-// ============================================
-const securityHeaders = {
-  // CORS - Restrict to same origin in production
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  
-  // Prevent MIME type sniffing attacks
-  "X-Content-Type-Options": "nosniff",
-  
-  // Prevent clickjacking
-  "X-Frame-Options": "DENY",
-  
-  // XSS Protection (legacy but still useful)
-  "X-XSS-Protection": "1; mode=block",
-  
-  // Referrer policy - prevent leaking URLs
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  
-  // Content type for JSON responses
-  "Content-Type": "application/json",
-  
-  // Cache control - prevent caching sensitive responses
-  "Cache-Control": "no-store, no-cache, must-revalidate, private",
-  "Pragma": "no-cache",
-};
-
-// ============================================
-// SECURITY HEADERS TO CHECK ON TARGET
-// ============================================
-const SECURITY_HEADERS = [
-  "strict-transport-security",
-  "content-security-policy",
-  "x-content-type-options",
-  "x-frame-options",
-  "x-xss-protection",
-  "referrer-policy",
-  "permissions-policy",
-];
-
-// ============================================
-// TECHNOLOGY DETECTION PATTERNS
-// Non-intrusive fingerprinting based on public information
-// ============================================
-const TECH_PATTERNS: Record<string, RegExp[]> = {
-  WordPress: [/wp-content/i, /wp-includes/i, /wordpress/i],
-  Drupal: [/drupal/i, /sites\/default/i],
-  Joomla: [/joomla/i, /com_content/i],
-  Shopify: [/shopify/i, /cdn\.shopify\.com/i],
-  Wix: [/wix\.com/i, /parastorage\.com/i],
-  Squarespace: [/squarespace/i, /static\.squarespace/i],
-  React: [/react/i, /_next/i, /__next/i],
-  Vue: [/vue/i, /nuxt/i],
-  Angular: [/ng-version/i, /angular/i],
-  Bootstrap: [/bootstrap/i],
-  jQuery: [/jquery/i],
-  Cloudflare: [/cloudflare/i, /cf-ray/i],
-  nginx: [/nginx/i],
-  Apache: [/apache/i],
-};
-
-// ============================================
-// INPUT VALIDATION
-// Strict validation prevents SSRF and injection attacks
-// ============================================
-
-/**
- * Validates and sanitizes URL input
- * SECURITY: Prevents SSRF by blocking internal IPs and dangerous protocols
- */
-function validateUrl(input: unknown): { valid: boolean; url: string | null; error: string | null } {
-  // Type check
-  if (typeof input !== "string") {
-    return { valid: false, url: null, error: "URL must be a string" };
-  }
-
-  // Length check - prevent DoS via extremely long URLs
-  if (input.length > 2000) {
-    return { valid: false, url: null, error: "URL exceeds maximum length" };
-  }
-
-  // Trim and normalize
-  let url = input.trim();
-  
-  // Add protocol if missing
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = `https://${url}`;
-  }
-
-  try {
-    const parsed = new URL(url);
-
-    // SECURITY: Only allow http/https protocols
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      return { valid: false, url: null, error: "Only HTTP and HTTPS protocols are allowed" };
-    }
-
-    // SECURITY: Block internal/private IP ranges (SSRF protection)
-    const hostname = parsed.hostname.toLowerCase();
-    const blockedPatterns = [
-      /^localhost$/i,
-      /^127\./,
-      /^10\./,
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
-      /^192\.168\./,
-      /^169\.254\./,
-      /^0\./,
-      /^\[::1\]$/,
-      /^\[fc/i,
-      /^\[fd/i,
-      /^\[fe80:/i,
-      /\.local$/i,
-      /\.internal$/i,
-      /\.localhost$/i,
-    ];
-
-    for (const pattern of blockedPatterns) {
-      if (pattern.test(hostname)) {
-        return { valid: false, url: null, error: "Internal or reserved addresses are not allowed" };
-      }
-    }
-
-    // SECURITY: Block URLs with credentials
-    if (parsed.username || parsed.password) {
-      return { valid: false, url: null, error: "URLs with credentials are not allowed" };
-    }
-
-    return { valid: true, url: parsed.href, error: null };
-  } catch {
-    return { valid: false, url: null, error: "Invalid URL format" };
-  }
-}
-
-// ============================================
-// SCAN TYPES AND INTERFACES
-// ============================================
-
-interface ScanResult {
-  ssl_valid: boolean;
-  ssl_expiry_date: string | null;
-  ssl_issuer: string | null;
-  headers_score: number;
-  missing_headers: string[];
-  present_headers: string[];
-  detected_technologies: string[];
-  detected_cms: string | null;
-  server_info: string | null;
-  risk_score: number;
-  risk_level: "low" | "medium" | "high" | "critical";
-}
-
-// ============================================
-// CORE SCAN LOGIC
-// Passive, non-intrusive security analysis
-// ============================================
-
-async function performScan(url: string): Promise<ScanResult> {
-  let response: Response;
-  
-  try {
-    // SECURITY: Set timeout to prevent hanging connections
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-    
-    response = await fetch(url, {
-      method: "GET",
-      headers: {
-        // Identify ourselves as a security scanner
-        "User-Agent": "SecureScan/1.0 (Security Analysis Bot - https://securescan.app)",
-      },
-      redirect: "follow",
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeoutId);
-  } catch (error) {
-    // SECURITY: Sanitize error messages to prevent information disclosure
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Request timed out");
-    }
-    throw new Error("Unable to connect to the target. Please verify the URL is accessible.");
-  }
-
-  // Limit response size to prevent memory exhaustion
-  const html = await response.text();
-  const truncatedHtml = html.substring(0, 500000); // Max 500KB
-  const headers = response.headers;
-
-  // Check SSL (if HTTPS)
-  const isHttps = url.startsWith("https://");
-  const ssl_valid = isHttps && response.ok;
-  const ssl_expiry_date = null;
-  const ssl_issuer = null;
-
-  // Check security headers
-  const present_headers: string[] = [];
-  const missing_headers: string[] = [];
-  
-  for (const header of SECURITY_HEADERS) {
-    if (headers.get(header)) {
-      present_headers.push(header);
-    } else {
-      missing_headers.push(header);
-    }
-  }
-
-  // Calculate headers score
-  const headers_score = Math.round((present_headers.length / SECURITY_HEADERS.length) * 100);
-
-  // Detect technologies
-  const detected_technologies: string[] = [];
-  let detected_cms: string | null = null;
-
-  // Check response headers for server info
-  const server_info = headers.get("server") || headers.get("x-powered-by") || null;
-  
-  // Check for Cloudflare
-  if (headers.get("cf-ray")) {
-    detected_technologies.push("Cloudflare");
-  }
-
-  // Analyze HTML and headers for technology patterns
-  const combinedContent = truncatedHtml + " " + Array.from(headers.entries()).join(" ");
-  
-  for (const [tech, patterns] of Object.entries(TECH_PATTERNS)) {
-    for (const pattern of patterns) {
-      if (pattern.test(combinedContent)) {
-        if (!detected_technologies.includes(tech)) {
-          detected_technologies.push(tech);
-        }
-        if (["WordPress", "Drupal", "Joomla", "Shopify", "Wix", "Squarespace"].includes(tech)) {
-          detected_cms = tech;
-        }
-        break;
-      }
-    }
-  }
-
-  // Calculate risk score
-  let risk_score = 0;
-  
-  // SSL issues add significant risk
-  if (!isHttps) {
-    risk_score += 40;
-  } else if (!ssl_valid) {
-    risk_score += 30;
-  }
-
-  // Missing security headers increase risk
-  risk_score += missing_headers.length * 8;
-
-  // Certain CMS platforms may have known vulnerabilities
-  if (detected_cms && ["WordPress", "Drupal", "Joomla"].includes(detected_cms)) {
-    risk_score += 10;
-  }
-
-  // Cap at 100
-  risk_score = Math.min(100, risk_score);
-
-  // Determine risk level
-  let risk_level: "low" | "medium" | "high" | "critical";
-  if (risk_score <= 25) {
-    risk_level = "low";
-  } else if (risk_score <= 50) {
-    risk_level = "medium";
-  } else if (risk_score <= 75) {
-    risk_level = "high";
-  } else {
-    risk_level = "critical";
-  }
-
-  return {
-    ssl_valid,
-    ssl_expiry_date,
-    ssl_issuer,
-    headers_score,
-    missing_headers,
-    present_headers,
-    detected_technologies,
-    detected_cms,
-    server_info,
-    risk_score,
-    risk_level,
-  };
-}
-
-// ============================================
-// ERROR RESPONSE HELPER
-// Sanitized error responses prevent information disclosure
-// ============================================
-
-function errorResponse(message: string, status: number): Response {
-  // SECURITY: Never expose internal error details
-  return new Response(
-    JSON.stringify({ 
-      error: message,
-      // Don't include stack traces or internal details
-    }),
-    { status, headers: securityHeaders }
-  );
-}
+import { runSecurityScan, type ScanResult } from "./scanEngine.ts";
+import { 
+  securityHeaders, 
+  validateUrl, 
+  errorResponse, 
+  successResponse,
+  getSafeHostname 
+} from "./utils.ts";
 
 // ============================================
 // MAIN REQUEST HANDLER
@@ -379,7 +82,6 @@ Deno.serve(async (req) => {
     }
 
     const userId = claimsData.claims.sub as string;
-    const userEmail = claimsData.claims.email as string;
 
     // ============================================
     // RATE LIMITING CHECK
@@ -432,7 +134,8 @@ Deno.serve(async (req) => {
     }
 
     const targetUrl = validation.url;
-    console.log(`[SCAN] User ${userId} scanning ${new URL(targetUrl).hostname}`);
+    const safeHostname = getSafeHostname(targetUrl);
+    console.log(`[SCAN] User ${userId} scanning ${safeHostname}`);
 
     // ============================================
     // AUTHORIZATION CHECK
@@ -489,17 +192,18 @@ Deno.serve(async (req) => {
       p_user_agent: userAgent,
       p_resource_type: "scan",
       p_resource_id: scan.id,
-      p_details: { target_url: new URL(targetUrl).hostname },
+      p_details: { target_url: safeHostname },
       p_severity: "info",
     });
 
     // ============================================
     // PERFORM SECURITY SCAN
+    // Uses modular scan engine for clean separation
     // ============================================
     const startTime = Date.now();
     
     try {
-      const result = await performScan(targetUrl);
+      const result: ScanResult = await runSecurityScan(targetUrl);
       const scanDuration = Date.now() - startTime;
 
       // Update scan record with results
@@ -543,19 +247,20 @@ Deno.serve(async (req) => {
         p_resource_type: "scan",
         p_resource_id: scan.id,
         p_details: { 
-          target_url: new URL(targetUrl).hostname,
+          target_url: safeHostname,
           risk_level: result.risk_level,
           duration_ms: scanDuration,
         },
         p_severity: "info",
       });
 
-      console.log(`[SCAN] Completed for ${new URL(targetUrl).hostname} in ${scanDuration}ms`);
+      console.log(`[SCAN] Completed for ${safeHostname} in ${scanDuration}ms`);
 
-      return new Response(
-        JSON.stringify({ success: true, scan_id: scan.id, result }),
-        { status: 200, headers: securityHeaders }
-      );
+      return successResponse({ 
+        success: true, 
+        scan_id: scan.id, 
+        result 
+      });
 
     } catch (scanError) {
       const errorMessage = scanError instanceof Error ? scanError.message : "Scan failed";
@@ -578,7 +283,7 @@ Deno.serve(async (req) => {
         p_user_agent: userAgent,
         p_resource_type: "scan",
         p_resource_id: scan.id,
-        p_details: { target_url: new URL(targetUrl).hostname, error: errorMessage },
+        p_details: { target_url: safeHostname, error: errorMessage },
         p_severity: "warning",
       });
 
