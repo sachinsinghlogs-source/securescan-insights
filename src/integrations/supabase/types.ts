@@ -101,6 +101,63 @@ export type Database = {
         }
         Relationships: []
       }
+      risk_trends: {
+        Row: {
+          id: string
+          missing_headers_count: number | null
+          present_headers_count: number | null
+          recorded_at: string
+          risk_level: string
+          risk_score: number
+          scan_id: string
+          scheduled_scan_id: string | null
+          ssl_valid: boolean | null
+          target_url: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          missing_headers_count?: number | null
+          present_headers_count?: number | null
+          recorded_at?: string
+          risk_level: string
+          risk_score: number
+          scan_id: string
+          scheduled_scan_id?: string | null
+          ssl_valid?: boolean | null
+          target_url: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          missing_headers_count?: number | null
+          present_headers_count?: number | null
+          recorded_at?: string
+          risk_level?: string
+          risk_score?: number
+          scan_id?: string
+          scheduled_scan_id?: string | null
+          ssl_valid?: boolean | null
+          target_url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_trends_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risk_trends_scheduled_scan_id_fkey"
+            columns: ["scheduled_scan_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scans: {
         Row: {
           completed_at: string | null
@@ -166,6 +223,116 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      scheduled_scans: {
+        Row: {
+          created_at: string
+          environment: Database["public"]["Enums"]["scan_environment"]
+          id: string
+          is_active: boolean
+          last_scan_id: string | null
+          next_scan_at: string | null
+          scan_frequency: string
+          target_url: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          environment?: Database["public"]["Enums"]["scan_environment"]
+          id?: string
+          is_active?: boolean
+          last_scan_id?: string | null
+          next_scan_at?: string | null
+          scan_frequency?: string
+          target_url: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          environment?: Database["public"]["Enums"]["scan_environment"]
+          id?: string
+          is_active?: boolean
+          last_scan_id?: string | null
+          next_scan_at?: string | null
+          scan_frequency?: string
+          target_url?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_scans_last_scan_id_fkey"
+            columns: ["last_scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          current_value: string | null
+          description: string | null
+          id: string
+          is_dismissed: boolean
+          is_read: boolean
+          previous_value: string | null
+          scan_id: string | null
+          scheduled_scan_id: string | null
+          severity: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          current_value?: string | null
+          description?: string | null
+          id?: string
+          is_dismissed?: boolean
+          is_read?: boolean
+          previous_value?: string | null
+          scan_id?: string | null
+          scheduled_scan_id?: string | null
+          severity?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          current_value?: string | null
+          description?: string | null
+          id?: string
+          is_dismissed?: boolean
+          is_read?: boolean
+          previous_value?: string | null
+          scan_id?: string | null
+          scheduled_scan_id?: string | null
+          severity?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_alerts_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_alerts_scheduled_scan_id_fkey"
+            columns: ["scheduled_scan_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_scans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_audit_log: {
         Row: {
@@ -280,6 +447,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      scan_environment: "production" | "staging" | "development"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -408,6 +576,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      scan_environment: ["production", "staging", "development"],
     },
   },
 } as const

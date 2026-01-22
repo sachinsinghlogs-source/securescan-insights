@@ -1,14 +1,52 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp } from 'lucide-react';
 import ScanForm from '@/components/ScanForm';
 import ScanResultCard from '@/components/ScanResultCard';
+import RiskTrendChart from '@/components/RiskTrendChart';
+import AlertsPanel from '@/components/AlertsPanel';
+import ScheduledScansManager from '@/components/ScheduledScansManager';
+import ExecutiveDashboard from '@/components/ExecutiveDashboard';
 import type { Scan, Profile } from '@/types/database';
+
+type ScanEnvironment = 'production' | 'staging' | 'development';
+
+interface SecurityAlert {
+  id: string;
+  alert_type: string;
+  severity: string;
+  title: string;
+  description: string | null;
+  previous_value: string | null;
+  current_value: string | null;
+  is_read: boolean;
+  is_dismissed: boolean;
+  created_at: string;
+}
+
+interface RiskTrend {
+  id: string;
+  risk_score: number;
+  risk_level: string;
+  recorded_at: string;
+  target_url: string;
+}
+
+interface ScheduledScan {
+  id: string;
+  target_url: string;
+  environment: ScanEnvironment;
+  scan_frequency: string;
+  is_active: boolean;
+  next_scan_at: string | null;
+  created_at: string;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -17,6 +55,13 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showScanForm, setShowScanForm] = useState(false);
   const [isLoadingScans, setIsLoadingScans] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  
+  // New advanced features state
+  const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
+  const [trends, setTrends] = useState<RiskTrend[]>([]);
+  const [scheduledScans, setScheduledScans] = useState<ScheduledScan[]>([]);
+  const alertsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user && !loading) {
@@ -28,6 +73,9 @@ export default function Dashboard() {
     if (user) {
       fetchProfile();
       fetchScans();
+      fetchAlerts();
+      fetchTrends();
+      fetchScheduledScans();
     }
   }, [user]);
 
@@ -61,6 +109,51 @@ export default function Dashboard() {
     setIsLoadingScans(false);
   };
 
+  const fetchAlerts = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('security_alerts')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_dismissed', false)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!error && data) {
+      setAlerts(data as SecurityAlert[]);
+    }
+  };
+
+  const fetchTrends = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('risk_trends')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('recorded_at', { ascending: false })
+      .limit(100);
+
+    if (!error && data) {
+      setTrends(data as RiskTrend[]);
+    }
+  };
+
+  const fetchScheduledScans = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('scheduled_scans')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setScheduledScans(data as ScheduledScan[]);
+    }
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
@@ -70,6 +163,8 @@ export default function Dashboard() {
     setShowScanForm(false);
     fetchScans();
     fetchProfile();
+    fetchTrends();
+    fetchAlerts();
   };
 
   const getScansRemaining = () => {
@@ -83,6 +178,15 @@ export default function Dashboard() {
     if (profile.plan_type === 'pro') return true;
     return (profile.daily_scans_used || 0) < 3;
   };
+
+  const scrollToAlerts = () => {
+    setActiveTab('alerts');
+    setTimeout(() => {
+      alertsRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const unreadAlertCount = alerts.filter(a => !a.is_read).length;
 
   if (loading) {
     return (
@@ -99,6 +203,8 @@ export default function Dashboard() {
     high: completedScans.filter(s => s.risk_level === 'high' || s.risk_level === 'critical').length,
   };
 
+  const isPro = profile?.plan_type === 'pro';
+
   return (
     <div className="min-h-screen bg-background grid-pattern">
       {/* Header */}
@@ -112,8 +218,23 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Alert Bell */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={scrollToAlerts}
+            >
+              <Bell className="w-4 h-4" />
+              {unreadAlertCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-critical text-[10px] font-bold flex items-center justify-center text-critical-foreground">
+                  {unreadAlertCount > 9 ? '9+' : unreadAlertCount}
+                </span>
+              )}
+            </Button>
+
             <div className="hidden sm:flex items-center gap-2">
-              {profile?.plan_type === 'pro' ? (
+              {isPro ? (
                 <Badge className="bg-warning/20 text-warning border-warning/30 gap-1">
                   <Crown className="w-3 h-3" />
                   Pro
@@ -136,136 +257,377 @@ export default function Dashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="border-glow glass">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Scans</p>
-                  <p className="text-2xl font-bold">{scans.length}</p>
-                </div>
-                <Globe className="w-8 h-8 text-primary/50" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Tabs for different views */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="overview" className="gap-2">
+              <Activity className="w-4 h-4 hidden sm:block" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="scans" className="gap-2">
+              <Globe className="w-4 h-4 hidden sm:block" />
+              Scans
+            </TabsTrigger>
+            <TabsTrigger value="monitoring" className="gap-2">
+              <Calendar className="w-4 h-4 hidden sm:block" />
+              Monitoring
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="gap-2 relative">
+              <Bell className="w-4 h-4 hidden sm:block" />
+              Alerts
+              {unreadAlertCount > 0 && (
+                <span className="ml-1 w-5 h-5 rounded-full bg-critical text-[10px] font-bold flex items-center justify-center text-critical-foreground">
+                  {unreadAlertCount}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-          <Card className="border-glow glass">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Low Risk</p>
-                  <p className="text-2xl font-bold text-success">{riskCounts.low}</p>
-                </div>
-                <CheckCircle className="w-8 h-8 text-success/50" />
-              </div>
-            </CardContent>
-          </Card>
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="border-glow glass">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Scans</p>
+                      <p className="text-2xl font-bold">{scans.length}</p>
+                    </div>
+                    <Globe className="w-8 h-8 text-primary/50" />
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="border-glow glass">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Medium Risk</p>
-                  <p className="text-2xl font-bold text-warning">{riskCounts.medium}</p>
-                </div>
-                <AlertTriangle className="w-8 h-8 text-warning/50" />
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="border-glow glass">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Low Risk</p>
+                      <p className="text-2xl font-bold text-success">{riskCounts.low}</p>
+                    </div>
+                    <CheckCircle className="w-8 h-8 text-success/50" />
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="border-glow glass">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">High Risk</p>
-                  <p className="text-2xl font-bold text-critical">{riskCounts.high}</p>
-                </div>
-                <XCircle className="w-8 h-8 text-critical/50" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="border-glow glass">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Medium Risk</p>
+                      <p className="text-2xl font-bold text-warning">{riskCounts.medium}</p>
+                    </div>
+                    <AlertTriangle className="w-8 h-8 text-warning/50" />
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* Scan Form or Button */}
-        {showScanForm ? (
-          <div className="mb-8 animate-fade-in">
-            <ScanForm 
-              onCancel={() => setShowScanForm(false)} 
-              onComplete={handleScanComplete}
-              canScan={canScan()}
-            />
-          </div>
-        ) : (
-          <Card className="border-glow glass mb-8">
-            <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Start a New Scan</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Analyze any website for security vulnerabilities
-                  </p>
-                </div>
+              <Card className="border-glow glass">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">High Risk</p>
+                      <p className="text-2xl font-bold text-critical">{riskCounts.high}</p>
+                    </div>
+                    <XCircle className="w-8 h-8 text-critical/50" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Executive Dashboard + Trend Chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ExecutiveDashboard
+                scans={scans}
+                alerts={alerts}
+                trends={trends}
+                onViewAlerts={scrollToAlerts}
+              />
+              <RiskTrendChart trends={trends} />
+            </div>
+
+            {/* Quick Scan */}
+            {showScanForm ? (
+              <div className="animate-fade-in">
+                <ScanForm 
+                  onCancel={() => setShowScanForm(false)} 
+                  onComplete={handleScanComplete}
+                  canScan={canScan()}
+                />
+              </div>
+            ) : (
+              <Card className="border-glow glass">
+                <CardContent className="p-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-semibold">Start a New Scan</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Analyze any website for security vulnerabilities
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => setShowScanForm(true)}
+                      className="btn-glow bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                      disabled={!canScan()}
+                    >
+                      <Plus className="w-4 h-4" />
+                      New Scan
+                    </Button>
+                  </div>
+                  {!canScan() && (
+                    <p className="text-sm text-warning mt-4">
+                      You've reached your daily scan limit. Upgrade to Pro for unlimited scans.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Recent Scans Preview */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-muted-foreground" />
+                  Recent Scans
+                </h2>
                 <Button 
-                  onClick={() => setShowScanForm(true)}
-                  className="btn-glow bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-                  disabled={!canScan()}
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setActiveTab('scans')}
                 >
-                  <Plus className="w-4 h-4" />
-                  New Scan
+                  View All
                 </Button>
               </div>
-              {!canScan() && (
-                <p className="text-sm text-warning mt-4">
-                  You've reached your daily scan limit. Upgrade to Pro for unlimited scans.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Scan History */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-5 h-5 text-muted-foreground" />
-            <h2 className="text-xl font-semibold">Scan History</h2>
-          </div>
-
-          {isLoadingScans ? (
-            <div className="grid gap-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="border-border/50 animate-pulse">
+              {isLoadingScans ? (
+                <Card className="border-border/50 animate-pulse">
                   <CardContent className="p-6">
                     <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
                     <div className="h-3 bg-muted rounded w-1/2"></div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          ) : scans.length === 0 ? (
-            <Card className="border-border/50">
-              <CardContent className="p-12 text-center">
-                <Globe className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium mb-2">No scans yet</h3>
-                <p className="text-muted-foreground text-sm">
-                  Start your first scan to analyze a website's security posture
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {scans.map((scan, index) => (
-                <div 
-                  key={scan.id} 
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <ScanResultCard scan={scan} />
+              ) : scans.length === 0 ? (
+                <Card className="border-border/50">
+                  <CardContent className="p-12 text-center">
+                    <Globe className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No scans yet</h3>
+                    <p className="text-muted-foreground text-sm">
+                      Start your first scan to analyze a website's security posture
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {scans.slice(0, 3).map((scan, index) => (
+                    <div 
+                      key={scan.id} 
+                      className="animate-fade-in"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      <ScanResultCard scan={scan} />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
+          </TabsContent>
+
+          {/* Scans Tab */}
+          <TabsContent value="scans" className="space-y-6">
+            {/* Scan Form or Button */}
+            {showScanForm ? (
+              <div className="animate-fade-in">
+                <ScanForm 
+                  onCancel={() => setShowScanForm(false)} 
+                  onComplete={handleScanComplete}
+                  canScan={canScan()}
+                />
+              </div>
+            ) : (
+              <Card className="border-glow glass">
+                <CardContent className="p-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-semibold">Start a New Scan</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Analyze any website for security vulnerabilities
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => setShowScanForm(true)}
+                      className="btn-glow bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                      disabled={!canScan()}
+                    >
+                      <Plus className="w-4 h-4" />
+                      New Scan
+                    </Button>
+                  </div>
+                  {!canScan() && (
+                    <p className="text-sm text-warning mt-4">
+                      You've reached your daily scan limit. Upgrade to Pro for unlimited scans.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Full Scan History */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="w-5 h-5 text-muted-foreground" />
+                <h2 className="text-xl font-semibold">Scan History</h2>
+                <Badge variant="secondary">{scans.length}</Badge>
+              </div>
+
+              {isLoadingScans ? (
+                <div className="grid gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="border-border/50 animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
+                        <div className="h-3 bg-muted rounded w-1/2"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : scans.length === 0 ? (
+                <Card className="border-border/50">
+                  <CardContent className="p-12 text-center">
+                    <Globe className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No scans yet</h3>
+                    <p className="text-muted-foreground text-sm">
+                      Start your first scan to analyze a website's security posture
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {scans.map((scan, index) => (
+                    <div 
+                      key={scan.id} 
+                      className="animate-fade-in"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      <ScanResultCard scan={scan} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Monitoring Tab */}
+          <TabsContent value="monitoring" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ScheduledScansManager
+                scheduledScans={scheduledScans}
+                onUpdated={fetchScheduledScans}
+                isPro={isPro}
+              />
+              <RiskTrendChart trends={trends} />
+            </div>
+
+            {!isPro && (
+              <Card className="border-warning/30 bg-warning/5">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-lg bg-warning/20">
+                      <Crown className="w-5 h-5 text-warning" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1">Upgrade to Pro</h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Get continuous monitoring, intelligent alerts, and unlimited scans.
+                      </p>
+                      <ul className="text-sm space-y-1 mb-4">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-success" />
+                          Automatic daily/hourly scans
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-success" />
+                          Configuration drift detection
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-success" />
+                          Risk trend analysis
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-success" />
+                          Environment profiles (Prod/Staging/Dev)
+                        </li>
+                      </ul>
+                      <Button className="gap-2">
+                        <Crown className="w-4 h-4" />
+                        Upgrade to Pro - ₹499/month
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Alerts Tab */}
+          <TabsContent value="alerts" className="space-y-6" ref={alertsRef}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <AlertsPanel 
+                  alerts={alerts} 
+                  onAlertUpdated={fetchAlerts} 
+                />
+              </div>
+              <div className="space-y-6">
+                <Card className="border-glow glass">
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-primary" />
+                      Alert Summary
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Unread</span>
+                        <Badge>{alerts.filter(a => !a.is_read).length}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Critical</span>
+                        <Badge className="bg-critical/20 text-critical border-critical/30">
+                          {alerts.filter(a => a.severity === 'critical').length}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">High</span>
+                        <Badge className="bg-critical/15 text-critical border-critical/20">
+                          {alerts.filter(a => a.severity === 'high').length}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Medium</span>
+                        <Badge className="bg-warning/20 text-warning border-warning/30">
+                          {alerts.filter(a => a.severity === 'medium').length}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {!isPro && (
+                  <Card className="border-primary/30 bg-primary/5">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Pro users get instant email notifications
+                      </p>
+                      <Button size="sm" variant="outline">
+                        Upgrade
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
