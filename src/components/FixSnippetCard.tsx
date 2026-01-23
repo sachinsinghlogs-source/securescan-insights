@@ -18,7 +18,9 @@ import {
 export interface FixSnippet {
   title: string;
   description: string;
+  whyItMatters?: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
+  impactScore?: number;
   apache?: string;
   nginx?: string;
   iis?: string;
@@ -143,6 +145,45 @@ export default function FixSnippetCard({ fixes }: FixSnippetCardProps) {
 
             {expandedFix === index && (
               <div className="mt-4 space-y-4 animate-fade-in">
+                {/* Why It Matters - NEW */}
+                {fix.whyItMatters && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <h5 className="text-xs font-semibold text-destructive mb-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      Why This Matters
+                    </h5>
+                    <p className="text-sm text-muted-foreground">
+                      {fix.whyItMatters}
+                    </p>
+                  </div>
+                )}
+
+                {/* Impact Score */}
+                {fix.impactScore && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Impact:</span>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div 
+                          key={i}
+                          className={`w-2 h-4 rounded-sm ${
+                            i < fix.impactScore! 
+                              ? fix.impactScore! >= 8 
+                                ? 'bg-destructive' 
+                                : fix.impactScore! >= 5 
+                                  ? 'bg-warning' 
+                                  : 'bg-muted-foreground'
+                              : 'bg-muted'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {fix.impactScore}/10
+                    </span>
+                  </div>
+                )}
+
                 <p className="text-sm text-muted-foreground">
                   {fix.description}
                 </p>
