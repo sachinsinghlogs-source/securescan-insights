@@ -10,7 +10,9 @@
 export interface FixSnippet {
   title: string;
   description: string;
+  whyItMatters: string; // NEW: Explains the risk if not fixed
   severity: "critical" | "high" | "medium" | "low";
+  impactScore: number; // NEW: 1-10 impact rating
   apache?: string;
   nginx?: string;
   iis?: string;
@@ -24,7 +26,9 @@ export const FIX_SNIPPETS: Record<string, FixSnippet> = {
     title: "Enable HTTP Strict Transport Security (HSTS)",
     description:
       "HSTS forces browsers to always use HTTPS, preventing SSL stripping and downgrade attacks. This is critical for protecting user sessions and sensitive data.",
+    whyItMatters: "Without HSTS, attackers on the same network can intercept the initial HTTP request and perform man-in-the-middle attacks. This exposes login credentials, session cookies, and all transmitted data to theft.",
     severity: "critical",
+    impactScore: 10,
     apache: `# Add to .htaccess or Apache config
 Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"`,
     nginx: `# Add to nginx.conf server block
@@ -45,7 +49,9 @@ add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; prelo
     title: "Add Content Security Policy (CSP)",
     description:
       "CSP is a powerful defense against Cross-Site Scripting (XSS) attacks. It controls which resources the browser is allowed to load, reducing the attack surface significantly.",
+    whyItMatters: "Without CSP, malicious scripts injected through XSS vulnerabilities can steal user data, hijack sessions, deface your site, or redirect users to phishing pages. CSP is your primary defense against the most common web attack vector.",
     severity: "high",
+    impactScore: 9,
     apache: `# Add to .htaccess - Customize based on your needs
 Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://trusted-scripts.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.googleapis.com; connect-src 'self' https://api.yoursite.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"`,
     nginx: `# Add to nginx.conf server block - Customize based on your needs
@@ -59,7 +65,9 @@ Content-Security-Policy-Report-Only: default-src 'self'; report-uri /csp-violati
     title: "Prevent Clickjacking with X-Frame-Options",
     description:
       "X-Frame-Options prevents your site from being embedded in malicious iframes, protecting against clickjacking attacks where users are tricked into clicking hidden elements.",
+    whyItMatters: "Without this header, attackers can embed your login page in an invisible iframe on a malicious site. Users think they're clicking something harmless but actually click your hidden buttons—transferring money, changing settings, or granting permissions.",
     severity: "high",
+    impactScore: 8,
     apache: `# Add to .htaccess
 Header set X-Frame-Options "SAMEORIGIN"`,
     nginx: `# Add to nginx.conf
@@ -82,7 +90,9 @@ X-Frame-Options: SAMEORIGIN  # Allows framing only by same origin`,
     title: "Disable MIME Type Sniffing",
     description:
       "X-Content-Type-Options prevents browsers from MIME-sniffing responses away from the declared content-type, reducing the risk of drive-by download attacks.",
+    whyItMatters: "Browsers may 'sniff' file types and execute malicious JavaScript hidden in uploaded images or documents. This one-line fix prevents attackers from disguising executable content as harmless files.",
     severity: "medium",
+    impactScore: 6,
     apache: `# Add to .htaccess
 Header set X-Content-Type-Options "nosniff"`,
     nginx: `# Add to nginx.conf
@@ -102,7 +112,9 @@ add_header X-Content-Type-Options "nosniff" always;`,
     title: "Enable XSS Filter",
     description:
       "While modern browsers have deprecated this header in favor of CSP, it still provides a defense layer for older browsers against reflected XSS attacks.",
+    whyItMatters: "Although deprecated in modern browsers, this header still protects users on older browsers (IE, older Edge). It's a simple addition that provides backward compatibility for your security posture.",
     severity: "low",
+    impactScore: 3,
     apache: `# Add to .htaccess
 Header set X-XSS-Protection "1; mode=block"`,
     nginx: `# Add to nginx.conf
@@ -116,7 +128,9 @@ add_header X-XSS-Protection "1; mode=block" always;`,
     title: "Configure Referrer Policy",
     description:
       "Referrer-Policy controls how much referrer information is sent with requests. This protects user privacy and prevents sensitive URL parameters from leaking to external sites.",
+    whyItMatters: "URLs often contain sensitive data: session tokens, search queries, user IDs. Without this header, this information leaks to every external resource your page loads—analytics, CDNs, ads—creating privacy and security risks.",
     severity: "medium",
+    impactScore: 5,
     apache: `# Add to .htaccess
 Header set Referrer-Policy "strict-origin-when-cross-origin"`,
     nginx: `# Add to nginx.conf
@@ -132,7 +146,9 @@ Referrer-Policy: same-origin  # Only send to same origin`,
     title: "Set Permissions Policy",
     description:
       "Permissions-Policy (formerly Feature-Policy) allows you to control which browser features can be used on your site, reducing the attack surface.",
+    whyItMatters: "Third-party scripts embedded on your page could silently access the camera, microphone, or location. This header explicitly disables sensitive browser APIs you don't need, preventing malicious scripts from abusing them.",
     severity: "medium",
+    impactScore: 5,
     apache: `# Add to .htaccess
 Header set Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"`,
     nginx: `# Add to nginx.conf
@@ -147,7 +163,9 @@ Permissions-Policy: camera=(), microphone=(), geolocation=(self)
     title: "Renew SSL Certificate",
     description:
       "Your SSL certificate is expiring soon. An expired certificate will cause browser warnings and loss of user trust. Renew immediately to maintain secure connections.",
+    whyItMatters: "When your certificate expires, browsers show full-page security warnings that block users from accessing your site. This destroys user trust and can cause immediate revenue loss. Many users will never return.",
     severity: "critical",
+    impactScore: 10,
     example: `# Using certbot (Let's Encrypt):
 sudo certbot renew
 
@@ -163,7 +181,9 @@ openssl x509 -enddate -noout -in /path/to/certificate.crt
     title: "Fix SSL/TLS Configuration",
     description:
       "Your site is not using HTTPS or has an invalid SSL certificate. This exposes all traffic to interception and severely damages user trust.",
+    whyItMatters: "Without HTTPS, everything users send—passwords, credit cards, personal data—is transmitted in plain text. Anyone on the same network (coffee shop WiFi, hotel, airport) can intercept and steal this data. Modern browsers also penalize HTTP sites in search rankings.",
     severity: "critical",
+    impactScore: 10,
     example: `# Install free SSL with Let's Encrypt:
 sudo apt install certbot
 sudo certbot --nginx  # or --apache
@@ -177,7 +197,9 @@ curl -vI https://yoursite.com 2>&1 | grep -i "ssl certificate"`,
     title: "Update CMS to Latest Version",
     description:
       "Running an outdated CMS is a major security risk. Attackers actively exploit known vulnerabilities in older versions. Update immediately.",
+    whyItMatters: "CMS platforms like WordPress are targeted by automated botnets scanning for known vulnerabilities. Thousands of sites are compromised daily. Attackers can inject malware, steal data, or use your server for further attacks—often without you knowing.",
     severity: "high",
+    impactScore: 8,
     example: `# WordPress update:
 wp core update
 wp plugin update --all
@@ -225,6 +247,7 @@ export function buildFixes(
       ...FIX_SNIPPETS["outdated-cms"],
       title: `Keep ${detectedCms} Updated`,
       description: `${detectedCms} sites are frequently targeted by attackers. Ensure you're running the latest version with all security patches applied.`,
+      whyItMatters: `${detectedCms} is one of the most targeted platforms by hackers. Automated bots continuously scan for known vulnerabilities in outdated installations. A compromised CMS can lead to data theft, malware distribution, and SEO spam injection.`,
     });
   }
 
