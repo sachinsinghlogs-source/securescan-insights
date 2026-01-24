@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp } from 'lucide-react';
+import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History } from 'lucide-react';
 import ScanForm from '@/components/ScanForm';
 import ScanResultCard from '@/components/ScanResultCard';
 import RiskTrendChart from '@/components/RiskTrendChart';
 import AlertsPanel from '@/components/AlertsPanel';
 import ScheduledScansManager from '@/components/ScheduledScansManager';
 import ExecutiveDashboard from '@/components/ExecutiveDashboard';
+import DomainHistoryPanel from '@/components/DomainHistoryPanel';
+import ScanHistoryTimeline from '@/components/ScanHistoryTimeline';
 import type { Scan, Profile } from '@/types/database';
 
 type ScanEnvironment = 'production' | 'staging' | 'development';
@@ -61,6 +63,7 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
   const [trends, setTrends] = useState<RiskTrend[]>([]);
   const [scheduledScans, setScheduledScans] = useState<ScheduledScan[]>([]);
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const alertsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -259,7 +262,7 @@ export default function Dashboard() {
       <main className="container mx-auto px-4 py-8">
         {/* Tabs for different views */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="gap-2">
               <Activity className="w-4 h-4 hidden sm:block" />
               Overview
@@ -267,6 +270,10 @@ export default function Dashboard() {
             <TabsTrigger value="scans" className="gap-2">
               <Globe className="w-4 h-4 hidden sm:block" />
               Scans
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              <History className="w-4 h-4 hidden sm:block" />
+              History
             </TabsTrigger>
             <TabsTrigger value="monitoring" className="gap-2">
               <Calendar className="w-4 h-4 hidden sm:block" />
@@ -514,6 +521,81 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          {/* History Tab - Phase 2: Historical Memory */}
+          <TabsContent value="history" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <DomainHistoryPanel
+                scans={scans}
+                onSelectDomain={(domain) => setSelectedDomain(domain)}
+                selectedDomain={selectedDomain}
+              />
+              {selectedDomain ? (
+                <ScanHistoryTimeline
+                  domain={selectedDomain}
+                  scans={scans}
+                  onBack={() => setSelectedDomain(null)}
+                />
+              ) : (
+                <Card className="border-glow glass flex items-center justify-center min-h-[400px]">
+                  <CardContent className="text-center p-6">
+                    <History className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                    <h3 className="font-semibold mb-2">Select a Domain</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Choose a domain from the list to view its complete scan history and track changes over time.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* History Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card className="border-border/50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Unique Domains</p>
+                      <p className="text-2xl font-bold">
+                        {new Set(scans.map(s => {
+                          try { return new URL(s.target_url).hostname; } catch { return ''; }
+                        }).filter(Boolean)).size}
+                      </p>
+                    </div>
+                    <Globe className="w-8 h-8 text-primary/50" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Scans</p>
+                      <p className="text-2xl font-bold">{scans.length}</p>
+                    </div>
+                    <Activity className="w-8 h-8 text-primary/50" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">First Scan</p>
+                      <p className="text-lg font-bold">
+                        {scans.length > 0 
+                          ? new Date(scans[scans.length - 1].created_at).toLocaleDateString()
+                          : 'N/A'}
+                      </p>
+                    </div>
+                    <Clock className="w-8 h-8 text-primary/50" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
