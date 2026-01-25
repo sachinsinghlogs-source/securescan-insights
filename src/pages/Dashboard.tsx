@@ -15,6 +15,7 @@ import ScheduledScansManager from '@/components/ScheduledScansManager';
 import ExecutiveDashboard from '@/components/ExecutiveDashboard';
 import DomainHistoryPanel from '@/components/DomainHistoryPanel';
 import ScanHistoryTimeline from '@/components/ScanHistoryTimeline';
+import NotificationSettings from '@/components/NotificationSettings';
 import type { Scan, Profile } from '@/types/database';
 
 type ScanEnvironment = 'production' | 'staging' | 'development';
@@ -694,18 +695,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {!isPro && (
-                  <Card className="border-primary/30 bg-primary/5">
-                    <CardContent className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Pro users get instant email notifications
-                      </p>
-                      <Button size="sm" variant="outline">
-                        Upgrade
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
+                <NotificationSettings isPro={isPro} />
               </div>
             </div>
           </TabsContent>
