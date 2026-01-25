@@ -207,6 +207,35 @@ export default function Dashboard() {
     high: completedScans.filter(s => s.risk_level === 'high' || s.risk_level === 'critical').length,
   };
 
+  // Helper function to find previous scan for a given scan (same domain)
+  const getPreviousScan = (scan: Scan): Scan | undefined => {
+    try {
+      const currentUrl = new URL(scan.target_url).hostname;
+      const currentDate = new Date(scan.created_at).getTime();
+      
+      // Find scans for the same domain that are older than the current scan
+      const previousScans = scans.filter(s => {
+        if (s.id === scan.id || s.status !== 'completed') return false;
+        try {
+          const scanUrl = new URL(s.target_url).hostname;
+          const scanDate = new Date(s.created_at).getTime();
+          return scanUrl === currentUrl && scanDate < currentDate;
+        } catch {
+          return false;
+        }
+      });
+
+      // Sort by date descending and return the most recent
+      previousScans.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      
+      return previousScans[0];
+    } catch {
+      return undefined;
+    }
+  };
+
   const isPro = profile?.plan_type === 'pro';
 
   return (
@@ -433,7 +462,7 @@ export default function Dashboard() {
                       className="animate-fade-in"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <ScanResultCard scan={scan} />
+                      <ScanResultCard scan={scan} previousScan={getPreviousScan(scan)} />
                     </div>
                   ))}
                 </div>
@@ -517,7 +546,7 @@ export default function Dashboard() {
                       className="animate-fade-in"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <ScanResultCard scan={scan} />
+                      <ScanResultCard scan={scan} previousScan={getPreviousScan(scan)} />
                     </div>
                   ))}
                 </div>

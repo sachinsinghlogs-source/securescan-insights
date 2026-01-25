@@ -19,19 +19,25 @@ import {
   XCircle,
   Loader2,
   Download,
-  Wrench
+  Wrench,
+  GitCompare
 } from 'lucide-react';
 import { generatePdfReport } from '@/lib/generatePdfReport';
 import { formatDistanceToNow } from 'date-fns';
 import FixSnippetCard, { type FixSnippet } from '@/components/FixSnippetCard';
+import DriftSummaryCard from '@/components/DriftSummaryCard';
+import ChangeDetectionView from '@/components/ChangeDetectionView';
 import type { Scan } from '@/types/database';
 
 interface ScanResultCardProps {
   scan: Scan;
+  previousScan?: Scan;
+  showDrift?: boolean;
 }
 
-export default function ScanResultCard({ scan }: ScanResultCardProps) {
+export default function ScanResultCard({ scan, previousScan, showDrift = true }: ScanResultCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [showChanges, setShowChanges] = useState(false);
 
   const getRiskBadge = () => {
     switch (scan.risk_level) {
@@ -196,6 +202,17 @@ export default function ScanResultCard({ scan }: ScanResultCardProps) {
             </div>
           )}
 
+          {/* Drift Summary (if previous scan exists) */}
+          {showDrift && previousScan && (
+            <div className="mb-4">
+              <DriftSummaryCard 
+                currentScan={scan} 
+                previousScan={previousScan}
+                onClick={() => setShowChanges(!showChanges)}
+              />
+            </div>
+          )}
+
           {/* Expand/Collapse Button */}
           <Button
             variant="ghost"
@@ -296,6 +313,15 @@ export default function ScanResultCard({ scan }: ScanResultCardProps) {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* What Changed - Full View */}
+              {showDrift && (previousScan || showChanges) && (
+                <ChangeDetectionView 
+                  currentScan={scan} 
+                  previousScan={previousScan}
+                  compact={false}
+                />
               )}
 
               {/* Recommended Fixes */}
