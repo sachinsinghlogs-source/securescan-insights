@@ -49,6 +49,7 @@ export type Database = {
           created_at: string
           daily_scans_used: number
           email: string
+          email_notifications: boolean
           full_name: string | null
           id: string
           last_scan_date: string | null
@@ -59,6 +60,7 @@ export type Database = {
           created_at?: string
           daily_scans_used?: number
           email: string
+          email_notifications?: boolean
           full_name?: string | null
           id: string
           last_scan_date?: string | null
@@ -69,6 +71,7 @@ export type Database = {
           created_at?: string
           daily_scans_used?: number
           email?: string
+          email_notifications?: boolean
           full_name?: string | null
           id?: string
           last_scan_date?: string | null
@@ -277,6 +280,8 @@ export type Database = {
           created_at: string
           current_value: string | null
           description: string | null
+          email_sent: boolean
+          email_sent_at: string | null
           id: string
           is_dismissed: boolean
           is_read: boolean
@@ -292,6 +297,8 @@ export type Database = {
           created_at?: string
           current_value?: string | null
           description?: string | null
+          email_sent?: boolean
+          email_sent_at?: string | null
           id?: string
           is_dismissed?: boolean
           is_read?: boolean
@@ -307,6 +314,8 @@ export type Database = {
           created_at?: string
           current_value?: string | null
           description?: string | null
+          email_sent?: boolean
+          email_sent_at?: string | null
           id?: string
           is_dismissed?: boolean
           is_read?: boolean
