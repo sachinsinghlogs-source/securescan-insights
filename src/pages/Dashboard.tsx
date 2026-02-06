@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History } from 'lucide-react';
+import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3 } from 'lucide-react';
 import ScanForm from '@/components/ScanForm';
 import ScanResultCard from '@/components/ScanResultCard';
 import RiskTrendChart from '@/components/RiskTrendChart';
@@ -16,6 +16,7 @@ import ExecutiveDashboard from '@/components/ExecutiveDashboard';
 import DomainHistoryPanel from '@/components/DomainHistoryPanel';
 import ScanHistoryTimeline from '@/components/ScanHistoryTimeline';
 import NotificationSettings from '@/components/NotificationSettings';
+import SecurityEventTimeline from '@/components/SecurityEventTimeline';
 import type { Scan, Profile } from '@/types/database';
 
 type ScanEnvironment = 'production' | 'staging' | 'development';
@@ -292,7 +293,7 @@ export default function Dashboard() {
       <main className="container mx-auto px-4 py-8">
         {/* Tabs for different views */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="gap-2">
               <Activity className="w-4 h-4 hidden sm:block" />
               Overview
@@ -300,6 +301,10 @@ export default function Dashboard() {
             <TabsTrigger value="scans" className="gap-2">
               <Globe className="w-4 h-4 hidden sm:block" />
               Scans
+            </TabsTrigger>
+            <TabsTrigger value="trends" className="gap-2">
+              <BarChart3 className="w-4 h-4 hidden sm:block" />
+              Trends
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <History className="w-4 h-4 hidden sm:block" />
@@ -554,6 +559,15 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
+          {/* Trends Tab - Phase 5: Risk Trend Analytics */}
+          <TabsContent value="trends" className="space-y-6">
+            {/* Full-width trend chart */}
+            <RiskTrendChart trends={trends} />
+
+            {/* Security event timeline */}
+            <SecurityEventTimeline scans={scans} />
+          </TabsContent>
+
           {/* History Tab - Phase 2: Historical Memory */}
           <TabsContent value="history" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -637,7 +651,7 @@ export default function Dashboard() {
                 onUpdated={fetchScheduledScans}
                 isPro={isPro}
               />
-              <RiskTrendChart trends={trends} />
+              <RiskTrendChart trends={trends} compact />
             </div>
 
             {!isPro && (
