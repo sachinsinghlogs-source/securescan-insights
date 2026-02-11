@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_preferences: {
+        Row: {
+          alert_type: string
+          cooldown_hours: number
+          created_at: string
+          enabled: boolean
+          id: string
+          min_severity: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          cooldown_hours?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          min_severity?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          cooldown_hours?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          min_severity?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       failed_login_attempts: {
         Row: {
           attempt_count: number
@@ -289,6 +322,7 @@ export type Database = {
           scan_id: string | null
           scheduled_scan_id: string | null
           severity: string
+          target_url: string | null
           title: string
           user_id: string
         }
@@ -306,6 +340,7 @@ export type Database = {
           scan_id?: string | null
           scheduled_scan_id?: string | null
           severity?: string
+          target_url?: string | null
           title: string
           user_id: string
         }
@@ -323,6 +358,7 @@ export type Database = {
           scan_id?: string | null
           scheduled_scan_id?: string | null
           severity?: string
+          target_url?: string | null
           title?: string
           user_id?: string
         }
