@@ -10,10 +10,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 
-export type AppRole = 'admin' | 'moderator' | 'user';
+export type AppRole = 'owner' | 'admin' | 'moderator' | 'user';
 
 interface RBACState {
   role: AppRole | null;
+  isOwner: boolean;
   isAdmin: boolean;
   isModerator: boolean;
   isLoading: boolean;
@@ -28,6 +29,7 @@ export function useRBAC(): RBACState {
   const { user } = useAuth();
   const [state, setState] = useState<RBACState>({
     role: null,
+    isOwner: false,
     isAdmin: false,
     isModerator: false,
     isLoading: true,
@@ -39,6 +41,7 @@ export function useRBAC(): RBACState {
       if (!user) {
         setState({
           role: null,
+          isOwner: false,
           isAdmin: false,
           isModerator: false,
           isLoading: false,
@@ -48,7 +51,6 @@ export function useRBAC(): RBACState {
       }
 
       try {
-        // Get user's highest role using the security definer function
         const { data: role, error } = await supabase.rpc('get_user_role', {
           _user_id: user.id,
         });
@@ -59,15 +61,17 @@ export function useRBAC(): RBACState {
 
         setState({
           role: userRole,
-          isAdmin: userRole === 'admin',
-          isModerator: userRole === 'admin' || userRole === 'moderator',
+          isOwner: userRole === 'owner',
+          isAdmin: userRole === 'owner' || userRole === 'admin',
+          isModerator: userRole === 'owner' || userRole === 'admin' || userRole === 'moderator',
           isLoading: false,
           error: null,
         });
       } catch (error) {
         console.error('Error fetching user role:', error);
         setState({
-          role: 'user', // Default to lowest privilege on error
+          role: 'user',
+          isOwner: false,
           isAdmin: false,
           isModerator: false,
           isLoading: false,
@@ -91,6 +95,7 @@ export function useHasRole(requiredRole: AppRole): boolean {
   if (isLoading || !role) return false;
   
   const roleHierarchy: Record<AppRole, number> = {
+    owner: 4,
     admin: 3,
     moderator: 2,
     user: 1,

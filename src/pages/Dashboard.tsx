@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3 } from 'lucide-react';
+import { useRBAC } from '@/hooks/useRBAC';
 import ScanForm from '@/components/ScanForm';
 import ScanResultCard from '@/components/ScanResultCard';
 import RiskTrendChart from '@/components/RiskTrendChart';
@@ -55,6 +56,7 @@ interface ScheduledScan {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, signOut, loading } = useAuth();
+  const { isOwner, isAdmin } = useRBAC();
   const [scans, setScans] = useState<Scan[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showScanForm, setShowScanForm] = useState(false);
@@ -283,6 +285,18 @@ export default function Dashboard() {
                 {getScansRemaining()} scans {typeof getScansRemaining() === 'number' ? 'remaining today' : ''}
               </span>
             </div>
+            {isOwner && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/owner')} className="gap-1 border-primary/30 text-primary">
+                <Crown className="w-4 h-4" />
+                <span className="hidden sm:inline">Owner Panel</span>
+              </Button>
+            )}
+            {isAdmin && !isOwner && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="gap-1">
+                <Shield className="w-4 h-4" />
+                <span className="hidden sm:inline">Admin</span>
+              </Button>
+            )}
             <Button variant="ghost" size="icon" onClick={handleSignOut}>
               <LogOut className="w-4 h-4" />
             </Button>
