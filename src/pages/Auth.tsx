@@ -40,6 +40,7 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -77,6 +78,7 @@ export default function Auth() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     try {
       authSchema.parse({ email, password, fullName });
@@ -97,6 +99,8 @@ export default function Auth() {
       } else {
         setError(error.message);
       }
+    } else {
+      setSuccess('Account created! Please check your email to verify your account before signing in.');
     }
   };
 
@@ -239,6 +243,13 @@ export default function Auth() {
                       />
                     </div>
                   </div>
+
+                  {success && (
+                    <div className="flex items-center gap-2 text-success text-sm p-3 rounded-lg bg-success/10 border border-success/20">
+                      <Shield className="w-4 h-4 flex-shrink-0" />
+                      <span>{success}</span>
+                    </div>
+                  )}
 
                   {error && (
                     <div className="flex items-center gap-2 text-critical text-sm p-3 rounded-lg bg-critical/10 border border-critical/20">
