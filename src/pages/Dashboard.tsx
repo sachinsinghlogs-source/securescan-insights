@@ -176,11 +176,12 @@ export default function Dashboard() {
 
   const getScansRemaining = () => {
     if (!profile) return 3;
-    if (profile.plan_type === 'pro') return 'Unlimited';
+    if (isAdmin || profile.plan_type === 'pro') return 'Unlimited';
     return Math.max(0, 3 - (profile.daily_scans_used || 0));
   };
 
   const canScan = () => {
+    if (isAdmin) return true;
     if (!profile) return true;
     if (profile.plan_type === 'pro') return true;
     return (profile.daily_scans_used || 0) < 3;

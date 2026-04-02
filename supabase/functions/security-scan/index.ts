@@ -160,8 +160,12 @@ Deno.serve(async (req) => {
       dailyScansUsed = 0;
     }
 
-    // Free users limited to 3 scans/day
-    if (profile.plan_type === "free" && dailyScansUsed >= 3) {
+    // Check if user has admin/owner role (bypass limits)
+    const { data: userRole } = await supabase.rpc("get_user_role", { _user_id: userId });
+    const isAdminOrOwner = userRole === "admin" || userRole === "owner";
+
+    // Free users limited to 3 scans/day (admins/owners bypass)
+    if (!isAdminOrOwner && profile.plan_type === "free" && dailyScansUsed >= 3) {
       return errorResponse("Daily scan limit reached. Upgrade to Pro for unlimited scans.", 403);
     }
 
