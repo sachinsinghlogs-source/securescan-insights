@@ -1,0 +1,1 @@
+UPDATE public.profiles SET plan_type = 'pro' WHERE email = 'sachinkumar778386@gmail.com';
