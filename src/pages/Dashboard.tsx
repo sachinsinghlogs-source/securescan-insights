@@ -85,6 +85,7 @@ export default function Dashboard() {
       fetchAlerts();
       fetchTrends();
       fetchScheduledScans();
+      fetchCloudScans();
     }
   }, [user]);
 
@@ -160,6 +161,19 @@ export default function Dashboard() {
 
     if (!error && data) {
       setScheduledScans(data as ScheduledScan[]);
+    }
+  };
+
+  const fetchCloudScans = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('cloud_scans')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (!error && data) {
+      setCloudScans(data);
     }
   };
 
