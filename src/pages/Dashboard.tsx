@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3 } from 'lucide-react';
+import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3, Cloud } from 'lucide-react';
 import { useRBAC } from '@/hooks/useRBAC';
 import ScanForm from '@/components/ScanForm';
 import ScanResultCard from '@/components/ScanResultCard';
@@ -18,6 +18,7 @@ import DomainHistoryPanel from '@/components/DomainHistoryPanel';
 import ScanHistoryTimeline from '@/components/ScanHistoryTimeline';
 import NotificationSettings from '@/components/NotificationSettings';
 import SecurityEventTimeline from '@/components/SecurityEventTimeline';
+import CloudSecurityScanner from '@/components/CloudSecurityScanner';
 import type { Scan, Profile } from '@/types/database';
 
 type ScanEnvironment = 'production' | 'staging' | 'development';
@@ -68,6 +69,7 @@ export default function Dashboard() {
   const [trends, setTrends] = useState<RiskTrend[]>([]);
   const [scheduledScans, setScheduledScans] = useState<ScheduledScan[]>([]);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [cloudScans, setCloudScans] = useState<any[]>([]);
   const alertsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
