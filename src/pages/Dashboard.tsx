@@ -324,7 +324,7 @@ export default function Dashboard() {
       <main className="container mx-auto px-4 py-8">
         {/* Tabs for different views */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="gap-2">
               <Activity className="w-4 h-4 hidden sm:block" />
               Overview
@@ -353,6 +353,10 @@ export default function Dashboard() {
                   {unreadAlertCount}
                 </span>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="cloud" className="gap-2">
+              <Cloud className="w-4 h-4 hidden sm:block" />
+              Cloud
             </TabsTrigger>
           </TabsList>
 
@@ -772,6 +776,11 @@ export default function Dashboard() {
                 <NotificationSettings isPro={isPro} />
               </div>
             </div>
+          </TabsContent>
+
+          {/* Cloud Security Tab */}
+          <TabsContent value="cloud" className="space-y-6">
+            <CloudSecurityScanner scans={cloudScans} onScanComplete={fetchCloudScans} />
           </TabsContent>
         </Tabs>
       </main>
