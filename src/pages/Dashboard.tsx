@@ -240,7 +240,7 @@ export default function Dashboard() {
     }
   };
 
-  const isPro = profile?.plan_type === 'pro';
+  const isPro = profile?.plan_type === 'pro' || isAdmin || isOwner;
 
   return (
     <div className="min-h-screen bg-background grid-pattern">
