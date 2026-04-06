@@ -47,6 +47,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cloud_scans: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          findings: Json | null
+          id: string
+          risk_level: string | null
+          risk_score: number | null
+          scan_duration_ms: number | null
+          scan_type: string
+          status: string
+          summary: Json | null
+          target_url: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          findings?: Json | null
+          id?: string
+          risk_level?: string | null
+          risk_score?: number | null
+          scan_duration_ms?: number | null
+          scan_type: string
+          status?: string
+          summary?: Json | null
+          target_url: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          findings?: Json | null
+          id?: string
+          risk_level?: string | null
+          risk_score?: number | null
+          scan_duration_ms?: number | null
+          scan_type?: string
+          status?: string
+          summary?: Json | null
+          target_url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       failed_login_attempts: {
         Row: {
           attempt_count: number

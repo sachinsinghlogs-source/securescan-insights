@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3 } from 'lucide-react';
+import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3, Cloud } from 'lucide-react';
 import { useRBAC } from '@/hooks/useRBAC';
 import ScanForm from '@/components/ScanForm';
 import ScanResultCard from '@/components/ScanResultCard';
@@ -18,6 +18,7 @@ import DomainHistoryPanel from '@/components/DomainHistoryPanel';
 import ScanHistoryTimeline from '@/components/ScanHistoryTimeline';
 import NotificationSettings from '@/components/NotificationSettings';
 import SecurityEventTimeline from '@/components/SecurityEventTimeline';
+import CloudSecurityScanner from '@/components/CloudSecurityScanner';
 import type { Scan, Profile } from '@/types/database';
 
 type ScanEnvironment = 'production' | 'staging' | 'development';
@@ -68,6 +69,7 @@ export default function Dashboard() {
   const [trends, setTrends] = useState<RiskTrend[]>([]);
   const [scheduledScans, setScheduledScans] = useState<ScheduledScan[]>([]);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [cloudScans, setCloudScans] = useState<any[]>([]);
   const alertsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,6 +85,7 @@ export default function Dashboard() {
       fetchAlerts();
       fetchTrends();
       fetchScheduledScans();
+      fetchCloudScans();
     }
   }, [user]);
 
@@ -158,6 +161,19 @@ export default function Dashboard() {
 
     if (!error && data) {
       setScheduledScans(data as ScheduledScan[]);
+    }
+  };
+
+  const fetchCloudScans = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('cloud_scans')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (!error && data) {
+      setCloudScans(data);
     }
   };
 
@@ -308,7 +324,7 @@ export default function Dashboard() {
       <main className="container mx-auto px-4 py-8">
         {/* Tabs for different views */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="gap-2">
               <Activity className="w-4 h-4 hidden sm:block" />
               Overview
@@ -337,6 +353,10 @@ export default function Dashboard() {
                   {unreadAlertCount}
                 </span>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="cloud" className="gap-2">
+              <Cloud className="w-4 h-4 hidden sm:block" />
+              Cloud
             </TabsTrigger>
           </TabsList>
 
@@ -756,6 +776,11 @@ export default function Dashboard() {
                 <NotificationSettings isPro={isPro} />
               </div>
             </div>
+          </TabsContent>
+
+          {/* Cloud Security Tab */}
+          <TabsContent value="cloud" className="space-y-6">
+            <CloudSecurityScanner scans={cloudScans} onScanComplete={fetchCloudScans} />
           </TabsContent>
         </Tabs>
       </main>
