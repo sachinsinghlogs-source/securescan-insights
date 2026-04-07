@@ -47,12 +47,76 @@ export type Database = {
         }
         Relationships: []
       }
+      cloud_scan_pipelines: {
+        Row: {
+          completed_at: string | null
+          completed_stages: string[] | null
+          created_at: string
+          critical_count: number | null
+          high_count: number | null
+          id: string
+          info_count: number | null
+          low_count: number | null
+          medium_count: number | null
+          overall_risk_level: string | null
+          overall_risk_score: number | null
+          scan_duration_ms: number | null
+          status: string
+          target_url: string
+          total_findings: number | null
+          total_stages: number | null
+          user_id: string
+          webhook_trigger: boolean | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_stages?: string[] | null
+          created_at?: string
+          critical_count?: number | null
+          high_count?: number | null
+          id?: string
+          info_count?: number | null
+          low_count?: number | null
+          medium_count?: number | null
+          overall_risk_level?: string | null
+          overall_risk_score?: number | null
+          scan_duration_ms?: number | null
+          status?: string
+          target_url: string
+          total_findings?: number | null
+          total_stages?: number | null
+          user_id: string
+          webhook_trigger?: boolean | null
+        }
+        Update: {
+          completed_at?: string | null
+          completed_stages?: string[] | null
+          created_at?: string
+          critical_count?: number | null
+          high_count?: number | null
+          id?: string
+          info_count?: number | null
+          low_count?: number | null
+          medium_count?: number | null
+          overall_risk_level?: string | null
+          overall_risk_score?: number | null
+          scan_duration_ms?: number | null
+          status?: string
+          target_url?: string
+          total_findings?: number | null
+          total_stages?: number | null
+          user_id?: string
+          webhook_trigger?: boolean | null
+        }
+        Relationships: []
+      }
       cloud_scans: {
         Row: {
           completed_at: string | null
           created_at: string
           findings: Json | null
           id: string
+          pipeline_id: string | null
           risk_level: string | null
           risk_score: number | null
           scan_duration_ms: number | null
@@ -67,6 +131,7 @@ export type Database = {
           created_at?: string
           findings?: Json | null
           id?: string
+          pipeline_id?: string | null
           risk_level?: string | null
           risk_score?: number | null
           scan_duration_ms?: number | null
@@ -81,6 +146,7 @@ export type Database = {
           created_at?: string
           findings?: Json | null
           id?: string
+          pipeline_id?: string | null
           risk_level?: string | null
           risk_score?: number | null
           scan_duration_ms?: number | null
@@ -90,7 +156,15 @@ export type Database = {
           target_url?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cloud_scans_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "cloud_scan_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       failed_login_attempts: {
         Row: {
@@ -304,6 +378,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      scheduled_cloud_scans: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_pipeline_id: string | null
+          next_scan_at: string | null
+          scan_frequency: string
+          target_url: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_pipeline_id?: string | null
+          next_scan_at?: string | null
+          scan_frequency?: string
+          target_url: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_pipeline_id?: string | null
+          next_scan_at?: string | null
+          scan_frequency?: string
+          target_url?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_cloud_scans_last_pipeline_id_fkey"
+            columns: ["last_pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "cloud_scan_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scheduled_scans: {
         Row: {

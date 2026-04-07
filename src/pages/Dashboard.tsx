@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3, Cloud } from 'lucide-react';
+import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3, Cloud, Layers } from 'lucide-react';
 import { useRBAC } from '@/hooks/useRBAC';
 import ScanForm from '@/components/ScanForm';
 import ScanResultCard from '@/components/ScanResultCard';
@@ -19,6 +19,8 @@ import ScanHistoryTimeline from '@/components/ScanHistoryTimeline';
 import NotificationSettings from '@/components/NotificationSettings';
 import SecurityEventTimeline from '@/components/SecurityEventTimeline';
 import CloudSecurityScanner from '@/components/CloudSecurityScanner';
+import CloudPipelineRunner from '@/components/CloudPipelineRunner';
+import ScheduledCloudScans from '@/components/ScheduledCloudScans';
 import type { Scan, Profile } from '@/types/database';
 
 type ScanEnvironment = 'production' | 'staging' | 'development';
@@ -70,6 +72,8 @@ export default function Dashboard() {
   const [scheduledScans, setScheduledScans] = useState<ScheduledScan[]>([]);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const [cloudScans, setCloudScans] = useState<any[]>([]);
+  const [pipelines, setPipelines] = useState<any[]>([]);
+  const [scheduledCloudScans, setScheduledCloudScans] = useState<any[]>([]);
   const alertsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,6 +90,8 @@ export default function Dashboard() {
       fetchTrends();
       fetchScheduledScans();
       fetchCloudScans();
+      fetchPipelines();
+      fetchScheduledCloudScans();
     }
   }, [user]);
 
@@ -172,9 +178,28 @@ export default function Dashboard() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);
-    if (!error && data) {
-      setCloudScans(data);
-    }
+    if (!error && data) setCloudScans(data);
+  };
+
+  const fetchPipelines = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('cloud_scan_pipelines')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (!error && data) setPipelines(data);
+  };
+
+  const fetchScheduledCloudScans = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('scheduled_cloud_scans')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    if (!error && data) setScheduledCloudScans(data);
   };
 
   const handleSignOut = async () => {
@@ -780,7 +805,40 @@ export default function Dashboard() {
 
           {/* Cloud Security Tab */}
           <TabsContent value="cloud" className="space-y-6">
-            <CloudSecurityScanner scans={cloudScans} onScanComplete={fetchCloudScans} />
+            <Tabs defaultValue="pipeline" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+                <TabsTrigger value="pipeline" className="gap-2">
+                  <Layers className="w-4 h-4 hidden sm:block" />
+                  Pipeline
+                </TabsTrigger>
+                <TabsTrigger value="individual" className="gap-2">
+                  <Cloud className="w-4 h-4 hidden sm:block" />
+                  Individual Scans
+                </TabsTrigger>
+                <TabsTrigger value="scheduled" className="gap-2">
+                  <Calendar className="w-4 h-4 hidden sm:block" />
+                  Scheduled
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="pipeline">
+                <CloudPipelineRunner
+                  pipelines={pipelines}
+                  onPipelineComplete={() => { fetchPipelines(); fetchCloudScans(); }}
+                />
+              </TabsContent>
+
+              <TabsContent value="individual">
+                <CloudSecurityScanner scans={cloudScans} onScanComplete={fetchCloudScans} />
+              </TabsContent>
+
+              <TabsContent value="scheduled">
+                <ScheduledCloudScans
+                  scheduledScans={scheduledCloudScans}
+                  onUpdated={fetchScheduledCloudScans}
+                />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </main>
