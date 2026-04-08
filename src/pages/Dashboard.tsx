@@ -807,10 +807,14 @@ export default function Dashboard() {
           {/* Cloud Security Tab */}
           <TabsContent value="cloud" className="space-y-6">
             <Tabs defaultValue="pipeline" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+              <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
                 <TabsTrigger value="pipeline" className="gap-2">
                   <Layers className="w-4 h-4 hidden sm:block" />
-                  Pipeline
+                  VAPT Pipeline
+                </TabsTrigger>
+                <TabsTrigger value="reports" className="gap-2">
+                  <Shield className="w-4 h-4 hidden sm:block" />
+                  VAPT Reports
                 </TabsTrigger>
                 <TabsTrigger value="individual" className="gap-2">
                   <Cloud className="w-4 h-4 hidden sm:block" />
@@ -827,6 +831,10 @@ export default function Dashboard() {
                   pipelines={pipelines}
                   onPipelineComplete={() => { fetchPipelines(); fetchCloudScans(); }}
                 />
+              </TabsContent>
+
+              <TabsContent value="reports">
+                <VAPTReport />
               </TabsContent>
 
               <TabsContent value="individual">
