@@ -21,6 +21,7 @@ import SecurityEventTimeline from '@/components/SecurityEventTimeline';
 import CloudSecurityScanner from '@/components/CloudSecurityScanner';
 import CloudPipelineRunner from '@/components/CloudPipelineRunner';
 import ScheduledCloudScans from '@/components/ScheduledCloudScans';
+import VAPTReport from '@/components/VAPTReport';
 import type { Scan, Profile } from '@/types/database';
 
 type ScanEnvironment = 'production' | 'staging' | 'development';
