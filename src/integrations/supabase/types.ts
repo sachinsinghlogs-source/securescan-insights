@@ -608,6 +608,80 @@ export type Database = {
         }
         Relationships: []
       }
+      vapt_reports: {
+        Row: {
+          attack_surface_score: number | null
+          compliance_flags: Json | null
+          created_at: string
+          critical_count: number | null
+          executive_summary: string | null
+          high_count: number | null
+          id: string
+          info_count: number | null
+          low_count: number | null
+          medium_count: number | null
+          overall_risk_level: string | null
+          overall_risk_score: number | null
+          owasp_mapping: Json | null
+          pipeline_id: string
+          remediation_priority: Json | null
+          scan_duration_ms: number | null
+          target_url: string
+          total_findings: number | null
+          user_id: string
+        }
+        Insert: {
+          attack_surface_score?: number | null
+          compliance_flags?: Json | null
+          created_at?: string
+          critical_count?: number | null
+          executive_summary?: string | null
+          high_count?: number | null
+          id?: string
+          info_count?: number | null
+          low_count?: number | null
+          medium_count?: number | null
+          overall_risk_level?: string | null
+          overall_risk_score?: number | null
+          owasp_mapping?: Json | null
+          pipeline_id: string
+          remediation_priority?: Json | null
+          scan_duration_ms?: number | null
+          target_url: string
+          total_findings?: number | null
+          user_id: string
+        }
+        Update: {
+          attack_surface_score?: number | null
+          compliance_flags?: Json | null
+          created_at?: string
+          critical_count?: number | null
+          executive_summary?: string | null
+          high_count?: number | null
+          id?: string
+          info_count?: number | null
+          low_count?: number | null
+          medium_count?: number | null
+          overall_risk_level?: string | null
+          overall_risk_score?: number | null
+          owasp_mapping?: Json | null
+          pipeline_id?: string
+          remediation_priority?: Json | null
+          scan_duration_ms?: number | null
+          target_url?: string
+          total_findings?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vapt_reports_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "cloud_scan_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
