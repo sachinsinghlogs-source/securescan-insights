@@ -615,6 +615,7 @@ export type Database = {
           created_at: string
           critical_count: number | null
           executive_summary: string | null
+          finding_chains: Json | null
           high_count: number | null
           id: string
           info_count: number | null
@@ -636,6 +637,7 @@ export type Database = {
           created_at?: string
           critical_count?: number | null
           executive_summary?: string | null
+          finding_chains?: Json | null
           high_count?: number | null
           id?: string
           info_count?: number | null
@@ -657,6 +659,7 @@ export type Database = {
           created_at?: string
           critical_count?: number | null
           executive_summary?: string | null
+          finding_chains?: Json | null
           high_count?: number | null
           id?: string
           info_count?: number | null
