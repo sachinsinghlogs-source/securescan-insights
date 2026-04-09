@@ -1,86 +1,72 @@
 
 
-# Advanced Cloud VAPT Tool - Full Upgrade Plan
+# Advanced Cloud VAPT Upgrade Plan
 
 ## Current State
-The existing cloud security pipeline has 4 basic scan modules (Deployment, API, Storage, Infrastructure) that perform surface-level checks like header presence, CORS, and admin panel probing. This plan upgrades it to an advanced-level VAPT (Vulnerability Assessment and Penetration Testing) tool.
+The pipeline has 10 scan modules with basic checks per module. Each module does surface-level probing (header checks, single-path probes, basic pattern matching). The upgrade deepens every module and adds new capabilities.
 
-## What We Will Build
+## What Changes
 
-### 1. Expand Edge Function with 6 New Advanced Scan Modules
+### 1. Edge Function — Deeper Scan Logic Per Module (6 key upgrades)
 
-Add these modules to the `cloud-security-pipeline` edge function alongside the existing 4:
+**DNS Recon** — Add: CAA record check, MX open-relay fingerprint, NS delegation consistency, AXFR attempt detection (via EDNS probing), wildcard DNS detection (`*.domain`), check for known dangling CNAME targets (GitHub Pages, Heroku, S3, Azure, etc. via a signature list).
 
-- **DNS & Subdomain Reconnaissance**: Check DNS records (MX, TXT, SPF, DMARC, DNSKEY), detect zone transfer misconfigs, identify dangling CNAMEs (subdomain takeover risk)
-- **SSL/TLS Deep Analysis**: Certificate chain validation, expiry checks, weak cipher detection, protocol version testing (TLS 1.0/1.1 deprecated), certificate transparency log checks, OCSP stapling
-- **Authentication & Session Testing**: Test for default credentials on common paths, session fixation checks, JWT validation (algorithm confusion, expiry, weak secrets via known patterns), OAuth misconfiguration detection
-- **Information Disclosure & OSINT**: robots.txt/sitemap.xml analysis, .git/.svn/.env exposure, backup file detection (.bak, .old, .sql), metadata leak detection, email harvesting from page source
-- **WAF & Firewall Detection**: Identify WAF providers (Cloudflare, AWS WAF, Akamai), test WAF bypass patterns, detect rate-limit bypass opportunities
-- **Injection Surface Mapping**: SQL injection pattern probing (error-based detection via `'`, `1 OR 1=1`), command injection signature testing, path traversal detection (`../../etc/passwd`), open redirect testing
+**SSL/TLS Deep** — Add: check multiple ports (443, 8443), test TLS 1.0/1.1 by attempting downgraded fetch, OCSP stapling check via response headers, certificate key size analysis from CT logs, SAN (Subject Alternative Names) enumeration, mixed content detection (HTTP resources on HTTPS page).
 
-All scans remain **passive/non-destructive** (no exploitation) per security policy.
+**Auth & Session** — Add: test for username enumeration (different response on valid vs invalid login), check for CAPTCHA on login forms, test session cookie rotation after login, check for `__Host-` / `__Secure-` cookie prefixes, detect exposed API keys (AWS, Google, Stripe patterns in source), check for 2FA/MFA indicators.
 
-### 2. Enhanced Risk Scoring Engine
+**Info Disclosure / OSINT** — Add: check `.well-known/security.txt`, check for source maps (`.js.map`), detect debug mode indicators (`DEBUG=true`, stack traces), check `/.well-known/openid-configuration`, detect technology versions from `generator` meta tag, check for exposed Swagger/OpenAPI endpoints (`/swagger.json`, `/api-docs`), check `X-Debug-Token` header.
 
-Replace the simple additive scoring with a weighted CVSS-inspired model:
-- Weight by category (Auth vulns > Info Disclosure)
-- Factor in finding combinations (e.g., no WAF + XSS = elevated score)
-- Generate a confidence score per finding
-- Add OWASP Top 10 category mapping to each finding
+**WAF Detection** — Add: test multiple evasion techniques (encoding bypass, case variation, null bytes), check if WAF is in detection-only vs blocking mode (by analyzing response codes vs body), test SSRF payloads, test XXE patterns, detect ModSecurity, Azure Front Door, AWS Shield.
 
-### 3. New Database Table: `vapt_reports`
+**Injection Surface** — Add: blind XSS polyglot testing, CRLF injection check (`%0d%0a`), host header injection, HTTP parameter pollution, LDAP injection indicators, XML injection probing, NoSQL injection patterns (`{"$gt": ""}`), prototype pollution patterns.
 
-Store comprehensive report data:
-- `pipeline_id`, `user_id`, `target_url`
-- `executive_summary` (auto-generated text)
-- `owasp_mapping` (JSONB - findings mapped to OWASP categories)
-- `attack_surface_score` (0-100)
-- `compliance_flags` (JSONB - PCI-DSS, SOC2, ISO27001 relevance)
-- `remediation_priority` (JSONB - ordered fix list)
+### 2. Enhanced Risk Scoring
 
-### 4. Updated Pipeline UI (`CloudPipelineRunner.tsx`)
+- Add temporal scoring factor (newly discovered vulns weighted higher)
+- Add exploitability score per finding (network-accessible vs local-only)
+- Add environmental modifiers (public-facing = higher weight)
+- Add CVSS v3.1 base score estimate per finding
+- Cross-finding correlation: chained vulnerability detection (e.g., open redirect + no CSP = phishing chain)
 
-- Show all 10 scan stages with progress indicators
-- Add **OWASP Top 10 heatmap** showing which categories have findings
-- Add **Attack Surface Visualization** - radar chart showing exposure across categories
-- Add **Remediation Priority List** - ordered by impact with effort estimates
-- Add **Compliance Quick-Check** badges (PCI-DSS, SOC2, ISO27001)
-- Add **PDF Export** button for the full VAPT report
+### 3. New Scan Modules (expand from 10 to 14)
 
-### 5. New Component: `VAPTReport.tsx`
+- **HTTP Method Testing** — Check for unsafe methods (PUT, DELETE, TRACE, CONNECT) enabled, test TRACE for XST attacks
+- **Client-Side Security** — Scan HTML for inline scripts without nonces, check for Subresource Integrity (SRI) on external scripts, detect postMessage misuse patterns, check for DOM-XSS sinks
+- **API Specification Discovery** — Probe for GraphQL (`/graphql`, introspection query), REST API docs (`/swagger`, `/openapi.json`, `/api-docs`), WSDL endpoints
+- **Cloud Metadata & SSRF** — Test for cloud metadata access patterns, check for internal IP exposure, test common SSRF bypass patterns in URL parameters
 
-A detailed report view with:
-- Executive summary with risk posture overview
-- Finding details grouped by OWASP category
-- Remediation roadmap with priority ordering
-- Comparison with previous scans (delta view)
-- Compliance checklist
+### 4. Updated Pipeline UI
 
-### 6. Update Dashboard Cloud Tab
+- Show 14 scan stages with categorized grouping (Network, Application, API, Infrastructure)
+- Add per-finding CVSS score display
+- Add vulnerability chain visualization (linked findings)
+- Add "Export as JSON" alongside PDF
+- Add scan comparison modal (diff two pipeline runs)
+- Add dark/light severity timeline chart
 
-Add a new sub-tab "VAPT Reports" to the Cloud section showing historical reports with trend comparison.
+### 5. Database Changes
+
+- Add `cvss_vector` and `cvss_score` fields to finding JSONB structure
+- Update `total_stages` default to 14
+- Add `finding_chains` JSONB column to `vapt_reports` for correlated vulnerabilities
 
 ## Technical Details
 
-**Edge Function Changes** (`cloud-security-pipeline/index.ts`):
-- Add 6 new async scan functions
-- Update `SCAN_STAGES` to include all 10 modules
-- Add OWASP mapping helper
-- Add weighted risk calculation
-- Add executive summary auto-generation
+**Edge Function** (`cloud-security-pipeline/index.ts`):
+- Add 4 new scan functions: `scanHttpMethods`, `scanClientSideSecurity`, `scanApiDiscovery`, `scanCloudMetadata`
+- Expand all 10 existing scan functions with deeper checks as described above
+- Add CVSS v3.1 base score calculator
+- Add finding chain correlator
+- Update `SCAN_STAGES` to 14 entries
 
 **Database Migration**:
-- Create `vapt_reports` table with RLS (user owns, owner sees all)
-- Add `owasp_category` column to findings JSONB structure
-- Update `cloud_scan_pipelines` to support 10 stages (`total_stages` default to 10)
+- `ALTER TABLE cloud_scan_pipelines ALTER COLUMN total_stages SET DEFAULT 14`
+- `ALTER TABLE vapt_reports ADD COLUMN finding_chains jsonb DEFAULT '[]'`
 
-**New Files**:
-- `src/components/VAPTReport.tsx` - Full report component
-- `src/components/OWASPHeatmap.tsx` - OWASP Top 10 visual mapping
-- `src/components/AttackSurfaceRadar.tsx` - Radar chart for attack surface
-
-**Modified Files**:
-- `supabase/functions/cloud-security-pipeline/index.ts` - Add 6 modules + scoring
-- `src/components/CloudPipelineRunner.tsx` - Enhanced UI with new visualizations
-- `src/pages/Dashboard.tsx` - Add VAPT Reports sub-tab
+**Modified Frontend Files**:
+- `CloudPipelineRunner.tsx` — Add 4 new stage labels, grouped stage display, CVSS badges per finding, chain indicators
+- `VAPTReport.tsx` — Add CVSS display, finding chains section
+- `OWASPHeatmap.tsx` — Add finding count per cell, clickable drill-down
+- `AttackSurfaceRadar.tsx` — Expand to 14 categories
 
