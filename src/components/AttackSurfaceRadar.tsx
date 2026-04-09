@@ -16,6 +16,10 @@ const stageShortLabels: Record<string, string> = {
   info_disclosure: "OSINT",
   waf_detection: "WAF",
   injection_surface: "Injection",
+  http_methods: "HTTP",
+  client_side_security: "Client",
+  api_discovery: "API Disc",
+  cloud_metadata: "Cloud",
 };
 
 export default function AttackSurfaceRadar({ stages }: AttackSurfaceRadarProps) {
@@ -28,14 +32,14 @@ export default function AttackSurfaceRadar({ stages }: AttackSurfaceRadarProps) 
   return (
     <Card className="border-glow glass">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Attack Surface Radar</CardTitle>
+        <CardTitle className="text-base">Attack Surface Radar (14 Modules)</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={280}>
-          <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
+        <ResponsiveContainer width="100%" height={300}>
+          <RadarChart data={data} cx="50%" cy="50%" outerRadius="65%">
             <PolarGrid stroke="hsl(var(--border))" />
-            <PolarAngleAxis dataKey="category" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 9 }} />
+            <PolarAngleAxis dataKey="category" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }} />
+            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 8 }} />
             <Radar name="Risk Score" dataKey="score" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} />
           </RadarChart>
         </ResponsiveContainer>
