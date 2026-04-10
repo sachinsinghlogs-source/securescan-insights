@@ -1735,6 +1735,9 @@ Deno.serve(async (req) => {
     const findingChains = detectFindingChains(allFindings);
     const remediationPriority = buildRemediationPriority(allFindings);
     const executiveSummary = generateSummary(normalizedUrl, allFindings, overall, complianceFlags, findingChains);
+    const mitreMapping = buildMitreMapping(allFindings);
+    const businessRisk = calculateBusinessRisk(allFindings, normalizedUrl);
+    const attackPaths = generateAttackPaths(allFindings, findingChains);
 
     const categoriesHit = new Set(allFindings.filter(f => f.severity !== "info").map(f => f.category));
     const attackSurfaceScore = Math.min(100, Math.round((categoriesHit.size / 16) * 100));
@@ -1766,6 +1769,9 @@ Deno.serve(async (req) => {
       compliance_flags: complianceFlags,
       remediation_priority: remediationPriority,
       finding_chains: findingChains,
+      mitre_mapping: mitreMapping,
+      business_risk: businessRisk,
+      attack_paths: attackPaths,
       total_findings: allFindings.length,
       critical_count: counts.critical,
       high_count: counts.high,
