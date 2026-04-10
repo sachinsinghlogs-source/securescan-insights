@@ -851,8 +851,13 @@ export default function Dashboard() {
                   scheduledScans={scheduledCloudScans}
                   onUpdated={fetchScheduledCloudScans}
                 />
-              </TabsContent>
-            </Tabs>
+          </TabsContent>
+
+          {/* MITRE ATT&CK Tab */}
+          <TabsContent value="mitre" className="space-y-6">
+            <MitreAttackDashboard />
+          </TabsContent>
+        </Tabs>
           </TabsContent>
         </Tabs>
       </main>
