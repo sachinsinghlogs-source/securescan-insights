@@ -610,7 +610,9 @@ export type Database = {
       }
       vapt_reports: {
         Row: {
+          attack_paths: Json | null
           attack_surface_score: number | null
+          business_risk: Json | null
           compliance_flags: Json | null
           created_at: string
           critical_count: number | null
@@ -621,6 +623,7 @@ export type Database = {
           info_count: number | null
           low_count: number | null
           medium_count: number | null
+          mitre_mapping: Json | null
           overall_risk_level: string | null
           overall_risk_score: number | null
           owasp_mapping: Json | null
@@ -632,7 +635,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attack_paths?: Json | null
           attack_surface_score?: number | null
+          business_risk?: Json | null
           compliance_flags?: Json | null
           created_at?: string
           critical_count?: number | null
@@ -643,6 +648,7 @@ export type Database = {
           info_count?: number | null
           low_count?: number | null
           medium_count?: number | null
+          mitre_mapping?: Json | null
           overall_risk_level?: string | null
           overall_risk_score?: number | null
           owasp_mapping?: Json | null
@@ -654,7 +660,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attack_paths?: Json | null
           attack_surface_score?: number | null
+          business_risk?: Json | null
           compliance_flags?: Json | null
           created_at?: string
           critical_count?: number | null
@@ -665,6 +673,7 @@ export type Database = {
           info_count?: number | null
           low_count?: number | null
           medium_count?: number | null
+          mitre_mapping?: Json | null
           overall_risk_level?: string | null
           overall_risk_score?: number | null
           owasp_mapping?: Json | null

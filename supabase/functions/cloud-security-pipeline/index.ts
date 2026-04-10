@@ -1312,6 +1312,187 @@ function detectFindingChains(findings: Finding[]): FindingChain[] {
   return chains;
 }
 
+// ========== MITRE ATT&CK MAPPING ==========
+
+const MITRE_FINDING_MAP: Record<string, Array<{ tactic: string; technique: string }>> = {
+  // Reconnaissance
+  "dns-": [{ tactic: "TA0043", technique: "T1590" }],
+  "inf-provider": [{ tactic: "TA0043", technique: "T1592" }],
+  "inf-xpowered": [{ tactic: "TA0043", technique: "T1592" }],
+  "inf-aspnet": [{ tactic: "TA0043", technique: "T1592" }],
+  "dep-server": [{ tactic: "TA0043", technique: "T1592" }],
+  "info-": [{ tactic: "TA0043", technique: "T1596" }],
+  "api-gql": [{ tactic: "TA0043", technique: "T1596" }],
+  "api-swagger": [{ tactic: "TA0043", technique: "T1596" }],
+  // Initial Access
+  "api-xss": [{ tactic: "TA0001", technique: "T1190" }, { tactic: "TA0002", technique: "T1203" }],
+  "inj-": [{ tactic: "TA0001", technique: "T1190" }],
+  "dep-https": [{ tactic: "TA0001", technique: "T1189" }],
+  "auth-noauth": [{ tactic: "TA0001", technique: "T1078" }],
+  "api-noauth": [{ tactic: "TA0001", technique: "T1078" }],
+  "auth-jwt": [{ tactic: "TA0001", technique: "T1078" }],
+  // Execution
+  "client-dom-xss": [{ tactic: "TA0002", technique: "T1059" }],
+  "client-inline-script": [{ tactic: "TA0002", technique: "T1059" }],
+  "http-trace": [{ tactic: "TA0002", technique: "T1059" }],
+  // Credential Access
+  "dep-cookie-": [{ tactic: "TA0006", technique: "T1539" }],
+  "auth-enum": [{ tactic: "TA0006", technique: "T1110" }],
+  "auth-nocaptcha": [{ tactic: "TA0006", technique: "T1110" }],
+  "auth-apikey": [{ tactic: "TA0006", technique: "T1552" }],
+  "info-env": [{ tactic: "TA0006", technique: "T1552" }],
+  "info-git": [{ tactic: "TA0006", technique: "T1552" }],
+  "ssl-": [{ tactic: "TA0006", technique: "T1557" }],
+  // Discovery
+  "sto-listing": [{ tactic: "TA0007", technique: "T1580" }],
+  "cloud-metadata": [{ tactic: "TA0007", technique: "T1580" }],
+  "inf-admin": [{ tactic: "TA0007", technique: "T1046" }],
+  "http-unsafe": [{ tactic: "TA0007", technique: "T1046" }],
+  // Defense Evasion
+  "waf-": [{ tactic: "TA0005", technique: "T1562" }],
+  "dep-csp": [{ tactic: "TA0005", technique: "T1562" }],
+  // Privilege Escalation
+  "api-cors-creds": [{ tactic: "TA0004", technique: "T1134" }],
+  "api-cors-reflect": [{ tactic: "TA0004", technique: "T1134" }],
+  "auth-no2fa": [{ tactic: "TA0004", technique: "T1078.004" }],
+  // Collection
+  "sto-sensitive": [{ tactic: "TA0009", technique: "T1530" }],
+  "sto-public": [{ tactic: "TA0009", technique: "T1530" }],
+  "info-sourcemap": [{ tactic: "TA0009", technique: "T1213" }],
+  // Lateral Movement
+  "cloud-internal": [{ tactic: "TA0008", technique: "T1210" }],
+  "cloud-ssrf": [{ tactic: "TA0008", technique: "T1210" }],
+  // Impact
+  "api-norate": [{ tactic: "TA0040", technique: "T1499" }],
+  "inj-host": [{ tactic: "TA0040", technique: "T1491" }],
+};
+
+function buildMitreMapping(findings: Finding[]): Record<string, Record<string, { count: number; severity: string; findings: Array<{ id: string; title: string; severity: string; cvss_score?: number }> }>> {
+  const mapping: Record<string, Record<string, { count: number; severity: string; findings: Array<{ id: string; title: string; severity: string; cvss_score?: number }> }>> = {};
+  const sevRank: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
+
+  for (const f of findings) {
+    if (f.severity === "info") continue;
+
+    // Find matching MITRE mappings by prefix
+    for (const [prefix, mappings] of Object.entries(MITRE_FINDING_MAP)) {
+      if (f.id.startsWith(prefix) || f.id === prefix.replace(/-$/, "")) {
+        for (const { tactic, technique } of mappings) {
+          if (!mapping[tactic]) mapping[tactic] = {};
+          if (!mapping[tactic][technique]) {
+            mapping[tactic][technique] = { count: 0, severity: "low", findings: [] };
+          }
+          mapping[tactic][technique].count++;
+          mapping[tactic][technique].findings.push({
+            id: f.id,
+            title: f.title,
+            severity: f.severity,
+            cvss_score: f.cvss_score,
+          });
+          if ((sevRank[f.severity] || 0) > (sevRank[mapping[tactic][technique].severity] || 0)) {
+            mapping[tactic][technique].severity = f.severity;
+          }
+        }
+      }
+    }
+  }
+
+  return mapping;
+}
+
+// ========== BUSINESS RISK SCORING ==========
+
+function calculateBusinessRisk(findings: Finding[], url: string): Record<string, any> {
+  const sevWeights: Record<string, number> = { critical: 10, high: 7, medium: 4, low: 1, info: 0 };
+
+  // Data sensitivity score
+  const dataFindings = findings.filter(f =>
+    f.category.includes("Data") || f.category.includes("Storage") ||
+    f.category.includes("Credential") || f.id.includes("sensitive") || f.id.includes("env")
+  );
+  const dataSensitivity = Math.min(100, dataFindings.reduce((s, f) => s + (sevWeights[f.severity] || 0) * 3, 0));
+
+  // Revenue impact (based on critical/high exploitable vulns)
+  const exploitable = findings.filter(f => f.severity === "critical" || f.severity === "high");
+  const revenueImpact = Math.min(100, exploitable.length * 12);
+
+  // Asset criticality (production assumed high)
+  const isProduction = !url.includes("staging") && !url.includes("dev") && !url.includes("test");
+  const assetCriticality = isProduction ? 85 : 40;
+
+  // Composite score
+  const composite = Math.round((dataSensitivity * 0.35) + (revenueImpact * 0.35) + (assetCriticality * 0.3));
+
+  return {
+    composite_score: Math.min(100, composite),
+    data_sensitivity: { score: dataSensitivity, finding_count: dataFindings.length },
+    revenue_impact: { score: revenueImpact, exploitable_count: exploitable.length },
+    asset_criticality: { score: assetCriticality, environment: isProduction ? "production" : "non-production" },
+    risk_level: composite >= 75 ? "critical" : composite >= 50 ? "high" : composite >= 25 ? "medium" : "low",
+  };
+}
+
+// ========== ATTACK PATH GENERATION ==========
+
+function generateAttackPaths(findings: Finding[], chains: FindingChain[]): Array<Record<string, any>> {
+  const paths: Array<Record<string, any>> = [];
+
+  // Generate paths from chains
+  for (const chain of chains) {
+    const chainFindings = chain.finding_ids.map(id => findings.find(f => f.id === id)).filter(Boolean);
+    if (chainFindings.length < 2) continue;
+
+    paths.push({
+      path_id: chain.chain_id,
+      title: chain.title,
+      severity: chain.severity,
+      steps: chainFindings.map((f, i) => ({
+        step: i + 1,
+        phase: i === 0 ? "Entry Point" : i === chainFindings.length - 1 ? "Impact" : "Escalation",
+        finding_id: f!.id,
+        finding_title: f!.title,
+        severity: f!.severity,
+        cvss_score: f!.cvss_score,
+      })),
+      impact: chain.combined_impact,
+    });
+  }
+
+  // Auto-generate path: Auth bypass → Data access
+  const authIssues = findings.filter(f => f.category.includes("Authentication") && (f.severity === "critical" || f.severity === "high"));
+  const dataIssues = findings.filter(f => (f.category.includes("Data") || f.category.includes("Storage")) && f.severity !== "info");
+  if (authIssues.length > 0 && dataIssues.length > 0) {
+    paths.push({
+      path_id: "auto-auth-data",
+      title: "Authentication Bypass → Data Access",
+      severity: "critical",
+      steps: [
+        { step: 1, phase: "Entry Point", finding_id: authIssues[0].id, finding_title: authIssues[0].title, severity: authIssues[0].severity },
+        { step: 2, phase: "Impact", finding_id: dataIssues[0].id, finding_title: dataIssues[0].title, severity: dataIssues[0].severity },
+      ],
+      impact: "Unauthenticated attacker gains access to sensitive data.",
+    });
+  }
+
+  // Auto-generate path: Info Disclosure → Credential Access → Privilege Escalation
+  const infoDisc = findings.filter(f => f.category.includes("Information Disclosure") && f.severity !== "info");
+  const credIssues = findings.filter(f => f.id.includes("apikey") || f.id.includes("env") || f.id.includes("git"));
+  if (infoDisc.length > 0 && credIssues.length > 0) {
+    paths.push({
+      path_id: "auto-info-cred",
+      title: "Information Leak → Credential Harvesting",
+      severity: "high",
+      steps: [
+        { step: 1, phase: "Reconnaissance", finding_id: infoDisc[0].id, finding_title: infoDisc[0].title, severity: infoDisc[0].severity },
+        { step: 2, phase: "Credential Access", finding_id: credIssues[0].id, finding_title: credIssues[0].title, severity: credIssues[0].severity },
+      ],
+      impact: "Exposed information leads to credential compromise.",
+    });
+  }
+
+  return paths;
+}
+
 // ========== OWASP MAPPING ==========
 
 function buildOwaspMapping(findings: Finding[]): Record<string, { count: number; severity: string; findings: string[] }> {
@@ -1554,6 +1735,9 @@ Deno.serve(async (req) => {
     const findingChains = detectFindingChains(allFindings);
     const remediationPriority = buildRemediationPriority(allFindings);
     const executiveSummary = generateSummary(normalizedUrl, allFindings, overall, complianceFlags, findingChains);
+    const mitreMapping = buildMitreMapping(allFindings);
+    const businessRisk = calculateBusinessRisk(allFindings, normalizedUrl);
+    const attackPaths = generateAttackPaths(allFindings, findingChains);
 
     const categoriesHit = new Set(allFindings.filter(f => f.severity !== "info").map(f => f.category));
     const attackSurfaceScore = Math.min(100, Math.round((categoriesHit.size / 16) * 100));
@@ -1585,6 +1769,9 @@ Deno.serve(async (req) => {
       compliance_flags: complianceFlags,
       remediation_priority: remediationPriority,
       finding_chains: findingChains,
+      mitre_mapping: mitreMapping,
+      business_risk: businessRisk,
+      attack_paths: attackPaths,
       total_findings: allFindings.length,
       critical_count: counts.critical,
       high_count: counts.high,
@@ -1612,6 +1799,9 @@ Deno.serve(async (req) => {
       executive_summary: executiveSummary,
       attack_surface_score: attackSurfaceScore,
       finding_chains: findingChains,
+      mitre_mapping: mitreMapping,
+      business_risk: businessRisk,
+      attack_paths: attackPaths,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
