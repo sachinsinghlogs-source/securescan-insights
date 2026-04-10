@@ -1799,6 +1799,9 @@ Deno.serve(async (req) => {
       executive_summary: executiveSummary,
       attack_surface_score: attackSurfaceScore,
       finding_chains: findingChains,
+      mitre_mapping: mitreMapping,
+      business_risk: businessRisk,
+      attack_paths: attackPaths,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
