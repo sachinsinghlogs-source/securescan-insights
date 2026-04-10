@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3, Cloud, Layers } from 'lucide-react';
+import { Shield, LogOut, Plus, Clock, Globe, AlertTriangle, CheckCircle, XCircle, Zap, Crown, Bell, Activity, Calendar, TrendingUp, History, BarChart3, Cloud, Layers, Crosshair } from 'lucide-react';
 import { useRBAC } from '@/hooks/useRBAC';
 import ScanForm from '@/components/ScanForm';
 import ScanResultCard from '@/components/ScanResultCard';
@@ -22,6 +22,7 @@ import CloudSecurityScanner from '@/components/CloudSecurityScanner';
 import CloudPipelineRunner from '@/components/CloudPipelineRunner';
 import ScheduledCloudScans from '@/components/ScheduledCloudScans';
 import VAPTReport from '@/components/VAPTReport';
+import MitreAttackDashboard from '@/components/MitreAttackDashboard';
 import type { Scan, Profile } from '@/types/database';
 
 type ScanEnvironment = 'production' | 'staging' | 'development';
@@ -350,7 +351,7 @@ export default function Dashboard() {
       <main className="container mx-auto px-4 py-8">
         {/* Tabs for different views */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="gap-2">
               <Activity className="w-4 h-4 hidden sm:block" />
               Overview
@@ -383,6 +384,10 @@ export default function Dashboard() {
             <TabsTrigger value="cloud" className="gap-2">
               <Cloud className="w-4 h-4 hidden sm:block" />
               Cloud
+            </TabsTrigger>
+            <TabsTrigger value="mitre" className="gap-2">
+              <Crosshair className="w-4 h-4 hidden sm:block" />
+              MITRE
             </TabsTrigger>
           </TabsList>
 
